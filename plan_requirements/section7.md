@@ -519,3 +519,24 @@ The following components shall be developed as independent modules:
 ├──────────────────┴───────────────────────────────────┴─────────────────────┤
 │ ◀◀   ▶   ▶▶    Historical Timeline / Propagation Time Machine     LIVE   │
 └────────────────────────────────────────────────────────────────────────────┘
+```
+
+## 7.11 Conceptual Mobile Layout
+
+```text
+┌──────────────────────────────┐
+│ RADIO ATLAS        ☰     ●   │
+├──────────────────────────────┤
+│                              │
+│        RADIO WEATHER         │
+│            GLOBE             │
+│                              │
+├──────────────────────────────┤
+│ 20m • FT8 • LIVE             │
+│ [Layers] [Filters] [Replay]  │
+├──────────────────────────────┤
+│ Radio Forecast               │
+├──────────────────────────────┤
+│ Current Conditions           │
+└──────────────────────────────┘
+```
