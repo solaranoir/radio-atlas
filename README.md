@@ -114,17 +114,39 @@ Transform invisible radio phenomena into an interactive environment.
 
 ``` text
 radio-atlas/
-├── frontend/
-├── backend/
-├── tests/
+
+├── README.md
+├── CODING_STANDARDS.md
+├── CONTRIBUTING.md
+├── ROADMAP.md
+│
 ├── docs/
-│   ├── adr/
+│   ├── requirements/
 │   ├── architecture/
-│   ├── api/
+│   ├── adr/
 │   ├── testing/
-│   └── requirements/
+│   └── ux/
+│
+├── frontend/
+│   └── src/
+│       ├── app/
+│       ├── globe/
+│       ├── components/
+│       └── services/
+│
+├── backend/
+│   └── app/
+│       ├── api/
+│       ├── domain/
+│       ├── providers/
+│       ├── ingestion/
+│       └── infrastructure/
+│
+├── tests/
+├── scripts/
 ├── docker/
 └── .github/
+
 ```
 
 ------------------------------------------------------------------------
