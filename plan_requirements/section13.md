@@ -243,4 +243,4 @@ Mobile devices should favor:
 * Bottom-sheet panels
 * Collapsible controls
 
-Persistent sidebars should be avoided. :contentReference[oaicite:7]{index=7}
+Persistent sidebars should be avoided. 
