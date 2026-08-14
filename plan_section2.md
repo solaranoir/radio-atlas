@@ -1,6 +1,3 @@
-# SolaraSphere: Radio Atlas
-## Requirements Document 
-
 # 2. Product Requirements Document (PRD)
 
 ## 2.1 Product Name
