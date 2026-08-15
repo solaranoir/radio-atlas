@@ -60,12 +60,7 @@ warn_unused_configs = true
 show_error_codes = true
 pretty = true
 files = ["app", "tests"]
-
-[[tool.mypy.overrides]]
-module = [
-    "tests.*",
-]
-disallow_untyped_defs = false
+plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
