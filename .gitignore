@@ -1,0 +1,57 @@
+# --- Secrets and environment ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+
+# --- Packaging/build output ---
+build/
+dist/
+*.egg-info/
+
+# --- Database/local runtime data ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Logs ---
+*.log
+logs/
+
+# --- IDE/editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# --- Test artifacts ---
+test-results/
+playwright-report/
+
+# --- Node/frontend (future-safe) ---
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# --- Temporary files ---
+tmp/
+temp/
+.cache/
