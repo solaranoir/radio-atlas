@@ -14,6 +14,8 @@ dependencies = [
     "httpx",
     "pydantic",
     "pydantic-settings",
+    "psycopg[binary]",
+    "redis",
 ]
 
 [project.optional-dependencies]
