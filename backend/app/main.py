@@ -2,6 +2,10 @@
 
 from fastapi import FastAPI
 
+from app.logging.logger import configure_logging
+
+configure_logging()
+
 app = FastAPI(
     title="SolaraSphere: Radio Atlas API",
     version="0.1.0",

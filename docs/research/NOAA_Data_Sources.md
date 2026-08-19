@@ -28,7 +28,7 @@ phases.
 | --- | --- | --- |
 | `SolarFlux` | `f107_cm_flux.json` | Selected |
 | `KpIndex` | `planetary_k_index_1m.json` | Selected |
-| `SunspotNumber` | `sunspot_report.json` | Selected |
+| `SunspotNumber` | `solar-cycle/swpc_observed_ssn.json` | Selected |
 | `AuroraForecast` | `ovation_aurora_latest.json` | Selected |
 | `SolarMagneticField` | `rtsw_mag_1m.json` | Selected |
 | `SolarWind` | `rtsw_wind_1m.json` | Selected |
@@ -127,7 +127,7 @@ measurements such as Boulder K.
 
 ### Selected endpoint
 
-https://services.swpc.noaa.gov/json/sunspot_report.json
+solar-cycle/swpc_observed_ssn.json
 
 ### Why this endpoint was selected
 
@@ -140,8 +140,8 @@ Phase 1.
 
 | NOAA field | Radio Atlas field |
 | --- | --- |
-| `time_tag` | `observed_at` |
-| `sunspot_number` | `sunspot_number` |
+| `Obsdate` | `observed_at`  |
+| `swpc_ssn` | `sunspot_number` |
 
 ### Refresh interval
 
