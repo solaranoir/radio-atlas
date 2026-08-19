@@ -58,26 +58,19 @@ class NOAAProvider(ObservationProvider):
             return payload
 
         if not isinstance(payload, list):
-            raise NOAAResponseError(
-                f"NOAA {feed} response must be an object or list"
-            )
+            raise NOAAResponseError(f"NOAA {feed} response must be an object or list")
 
         if not payload:
-            raise NOAAResponseError(
-                f"NOAA {feed} response was empty"
-            )
+            raise NOAAResponseError(f"NOAA {feed} response was empty")
 
         records = [
             record
             for record in payload
-            if isinstance(record, dict)
-            and record.get(timestamp_field) is not None
+            if isinstance(record, dict) and record.get(timestamp_field) is not None
         ]
 
         if not records:
-            raise NOAAResponseError(
-                f"NOAA {feed} response contained no valid records"
-            )
+            raise NOAAResponseError(f"NOAA {feed} response contained no valid records")
 
         return max(
             records,
@@ -201,9 +194,7 @@ class NOAAProvider(ObservationProvider):
     async def _fetch_sunspots(
         self,
     ) -> list[ProviderObservation]:
-        url = self._url(
-            "json/solar-cycle/swpc_observed_ssn.json"
-        )
+        url = self._url("json/solar-cycle/swpc_observed_ssn.json")
         payload = await self._http_client.get_json(url)
 
         record = self._latest_record(
@@ -242,7 +233,7 @@ class NOAAProvider(ObservationProvider):
 
     async def _fetch_magnetic_field(
         self,
-   ) -> list[ProviderObservation]:
+    ) -> list[ProviderObservation]:
         url = self._url("json/rtsw/rtsw_mag_1m.json")
 
         payload = await self._http_client.get_json(url)
@@ -283,47 +274,47 @@ class NOAAProvider(ObservationProvider):
         return [self._to_observation(magnetic_field)]
 
     async def _fetch_solar_wind(
-       self,
-   ) -> list[ProviderObservation]:
-       url = self._url("json/rtsw/rtsw_wind_1m.json")
+        self,
+    ) -> list[ProviderObservation]:
+        url = self._url("json/rtsw/rtsw_wind_1m.json")
 
-       payload = await self._http_client.get_json(url)
+        payload = await self._http_client.get_json(url)
 
-       record = self._latest_record(
-           payload,
-           feed="solar_wind",
-       )
+        record = self._latest_record(
+            payload,
+            feed="solar_wind",
+        )
 
-       try:
-           solar_wind = SolarWind(
-               observed_at=record["time_tag"],
-               proton_speed_kms=record["proton_speed"],
-               proton_density_cm3=record["proton_density"],
-               proton_temperature_k=record["proton_temperature"],
-               data_quality=record["overall_quality"],
-           )
-       except (
-           KeyError,
-           TypeError,
-           ValueError,
-           ValidationError,
-       ) as exc:
-           raise self._validation_error(
-               feed="solar_wind",
-               error=exc,
-           ) from exc
+        try:
+            solar_wind = SolarWind(
+                observed_at=record["time_tag"],
+                proton_speed_kms=record["proton_speed"],
+                proton_density_cm3=record["proton_density"],
+                proton_temperature_k=record["proton_temperature"],
+                data_quality=record["overall_quality"],
+            )
+        except (
+            KeyError,
+            TypeError,
+            ValueError,
+            ValidationError,
+        ) as exc:
+            raise self._validation_error(
+                feed="solar_wind",
+                error=exc,
+            ) from exc
 
-       logger.info(
-           "NOAA feed ingested",
-           extra={
-               "provider": self.name,
-               "operation": "ingest",
-               "feed": "solar_wind",
-               "record_count": 1,
-           },
-       )
+        logger.info(
+            "NOAA feed ingested",
+            extra={
+                "provider": self.name,
+                "operation": "ingest",
+                "feed": "solar_wind",
+                "record_count": 1,
+            },
+        )
 
-       return [self._to_observation(solar_wind)]
+        return [self._to_observation(solar_wind)]
 
     def _to_observation(
         self,
@@ -355,24 +346,17 @@ class NOAAProvider(ObservationProvider):
             },
         )
 
-        return NOAAResponseError(
-            f"NOAA {feed} response could not be normalized"
-        )
+        return NOAAResponseError(f"NOAA {feed} response could not be normalized")
 
     async def _fetch_aurora(
         self,
     ) -> list[ProviderObservation]:
-        url = (
-            f"{self._base_url}"
-            "/json/ovation_aurora_latest.json"
-        )
+        url = f"{self._base_url}/json/ovation_aurora_latest.json"
 
         payload = await self._http_client.get_json(url)
 
         if not isinstance(payload, dict):
-            raise NOAAResponseError(
-                "NOAA aurora response must be an object"
-            )
+            raise NOAAResponseError("NOAA aurora response must be an object")
 
         try:
             coordinates = payload["coordinates"]

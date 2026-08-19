@@ -18,6 +18,7 @@ RETRYABLE_STATUS_CODES = {
     504,
 }
 
+
 class HttpClientError(RuntimeError):
     """Base exception raised by the application HTTP client."""
 
@@ -28,6 +29,7 @@ class HttpResponseError(HttpClientError):
 
 class HttpJsonDecodeError(HttpClientError):
     """Raised when an HTTP response does not contain valid JSON."""
+
 
 class JsonHttpClient:
     """Reusable asynchronous HTTP client for JSON APIs."""
@@ -45,6 +47,7 @@ class JsonHttpClient:
         self._timeout_seconds = timeout_seconds
         self._max_attempts = max_attempts
         self._backoff_seconds = backoff_seconds
+
     async def get_json(
         self,
         url: str,
@@ -89,9 +92,7 @@ class JsonHttpClient:
                 try:
                     return response.json()
                 except ValueError as exc:
-                    raise HttpJsonDecodeError(
-                        f"Response from {url} was not valid JSON"
-                    ) from exc
+                    raise HttpJsonDecodeError(f"Response from {url} was not valid JSON") from exc
             except httpx.TimeoutException as exc:
                 logger.warning(
                     "HTTP request timed out",
@@ -105,8 +106,7 @@ class JsonHttpClient:
 
                 if attempt == self._max_attempts:
                     raise HttpClientError(
-                        f"Request to {url} timed out after "
-                        f"{self._max_attempts} attempts"
+                        f"Request to {url} timed out after {self._max_attempts} attempts"
                     ) from exc
 
             except httpx.TransportError as exc:
@@ -123,8 +123,7 @@ class JsonHttpClient:
 
                 if attempt == self._max_attempts:
                     raise HttpClientError(
-                        f"Request to {url} failed after "
-                        f"{self._max_attempts} attempts"
+                        f"Request to {url} failed after {self._max_attempts} attempts"
                     ) from exc
 
             except httpx.HTTPStatusError as exc:
@@ -163,12 +162,12 @@ class JsonHttpClient:
 
             await asyncio.sleep(delay)
 
-        raise HttpClientError(
-            f"Request to {url} failed unexpectedly"
-        )
+        raise HttpClientError(f"Request to {url} failed unexpectedly")
+
     async def aclose(self) -> None:
         if self._owns_client:
             await self._client.aclose()
+
     async def __aenter__(self) -> JsonHttpClient:
         return self
 

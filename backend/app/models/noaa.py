@@ -14,6 +14,7 @@ class SolarFlux(BaseModel):
     reporting_schedule: str
     ninety_day_mean: float | None = Field(default=None, ge=0)
 
+
 class KpIndex(BaseModel):
     """Normalized planetary K-index observation."""
 
