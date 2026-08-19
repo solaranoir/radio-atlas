@@ -12,8 +12,7 @@ class SolarFlux(BaseModel):
     frequency_mhz: int = Field(gt=0)
     flux_sfu: float = Field(ge=0)
     reporting_schedule: str
-    ninety_day_mean: float = Field(ge=0)
-
+    ninety_day_mean: float | None = Field(default=None, ge=0)
 
 class KpIndex(BaseModel):
     """Normalized planetary K-index observation."""
