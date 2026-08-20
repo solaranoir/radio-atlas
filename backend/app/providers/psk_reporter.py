@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 
 import aiomqtt
 from pydantic import ValidationError
@@ -9,6 +9,9 @@ from pydantic import ValidationError
 from app.models.psk_reporter import (
     NormalizedPSKSpot,
     PSKReporterSpot,
+)
+from app.providers.base import (
+    ProviderObservation,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,6 +46,15 @@ class PSKReporterProvider:
         self._reconnect_delay_seconds = reconnect_delay_seconds
         self._max_queue_size = max_queue_size
 
+    def _to_observation(
+        self,
+        spot: NormalizedPSKSpot,
+    ) -> ProviderObservation:
+        return ProviderObservation(
+            provider=self.name,
+            data=spot.model_dump(mode="json"),
+        )
+
     def _parse_message(
         self,
         payload: bytes,
@@ -63,7 +75,7 @@ class PSKReporterProvider:
 
     async def _messages(
         self,
-    ) -> AsyncIterator[NormalizedPSKSpot]:
+    ) -> AsyncGenerator[ProviderObservation]:
         async with aiomqtt.Client(
             hostname=self._host,
             port=self._port,
@@ -92,7 +104,9 @@ class PSKReporterProvider:
 
             async for message in client.messages:
                 try:
-                    yield self._parse_message(bytes(message.payload))
+                    spot = self._parse_message(bytes(message.payload))
+                    yield self._to_observation(spot)
+
                 except PSKReporterError as exc:
                     logger.warning(
                         "PSK Reporter message rejected",
@@ -106,11 +120,11 @@ class PSKReporterProvider:
 
     async def stream(
         self,
-    ) -> AsyncIterator[NormalizedPSKSpot]:
+    ) -> AsyncGenerator[ProviderObservation]:
         while True:
             try:
-                async for spot in self._messages():
-                    yield spot
+                async for observation in self._messages():
+                    yield observation
 
             except asyncio.CancelledError:
                 raise

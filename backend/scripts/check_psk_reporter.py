@@ -8,23 +8,21 @@ async def main() -> None:
 
     count = 0
 
-    async for spot in provider.stream():
-        print(
-            spot.sender_callsign.value,
-            "->",
-            spot.receiver_callsign.value,
-            spot.frequency.hz if spot.frequency else None,
-            spot.band.value if spot.band else None,
-            spot.mode.value,
-            spot.snr_db,
-            spot.observed_at,
-        )
+    async for observation in provider.stream():
+        print(f"Provider: {observation.provider}")
+        print(f"Observed at: {observation.data["observed_at"]}")
+        print(f"Sender: {observation.data['sender_callsign']['value']}")
+        print(f"Receiver: {observation.data['receiver_callsign']['value']}")
+        print(f"Frequency: {observation.data['frequency']['hz']}")
+        print(f"Band: {observation.data['band']['value']}")
+        print(f"Mode: {observation.data['mode']['value']}")
+        print(f"SNR: {observation.data['snr_db']}")
+        print()
 
         count += 1
 
         if count >= 5:
             break
-
 
 if __name__ == "__main__":
     asyncio.run(main())
