@@ -10,7 +10,7 @@ async def main() -> None:
 
     async for observation in provider.stream():
         print(f"Provider: {observation.provider}")
-        print(f"Observed at: {observation.data["observed_at"]}")
+        print(f"Observed at: {observation.data['observed_at']}")
         print(f"Sender: {observation.data['sender_callsign']['value']}")
         print(f"Receiver: {observation.data['receiver_callsign']['value']}")
         print(f"Frequency: {observation.data['frequency']['hz']}")
@@ -23,6 +23,7 @@ async def main() -> None:
 
         if count >= 5:
             break
+
 
 if __name__ == "__main__":
     asyncio.run(main())

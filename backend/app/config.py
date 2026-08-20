@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     psk_reporter_mqtt_port: int = 1883
     psk_reporter_mqtt_topic: str = "pskr/filter/v2/20m/FT8/#"
 
+
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
