@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
- 
+
 import pytest
 from pydantic import ValidationError
 
@@ -13,6 +13,7 @@ from app.models.psk_reporter import (
     OperatingMode,
     PSKReporterSpot,
 )
+
 
 def test_callsign_normalizes_case_and_whitespace() -> None:
     callsign = Callsign(value="  er1wk/qrp  ")
