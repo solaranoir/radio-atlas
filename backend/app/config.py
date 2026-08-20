@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     radio_atlas_redis_url: str = "redis://localhost:6379/0"
     noaa_base_url: str = "https://services.swpc.noaa.gov"
     psk_reporter_base_url: str = ""
+    psk_reporter_mqtt_host: str = "mqtt.pskreporter.info"
+    psk_reporter_mqtt_port: int = 1883
+    psk_reporter_mqtt_topic: str = "pskr/filter/v2/20m/FT8/#"
 
 
 @lru_cache
