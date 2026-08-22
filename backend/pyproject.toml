@@ -17,6 +17,9 @@ dependencies = [
     "pydantic-settings",
     "psycopg[binary]",
     "redis",
+    "alembic",
+    "asyncpg",
+    "sqlalchemy",
 ]
 
 [project.optional-dependencies]
