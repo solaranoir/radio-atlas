@@ -13,6 +13,24 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: radio_atlas
+          POSTGRES_PASSWORD: radio_atlas_dev
+          POSTGRES_DB: radio_atlas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U radio_atlas -d radio_atlas"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      RADIO_ATLAS_DATABASE_URL: postgresql+psycopg://radio_atlas:radio_atlas_dev@localhost:5432/radio_atlas
+
     defaults:
       run:
         working-directory: backend
@@ -23,7 +41,6 @@ jobs:
 
       - name: Set up Python
         uses: actions/setup-python@v6
-
         with:
           python-version: "3.12"
 
@@ -40,6 +57,9 @@ jobs:
 
       - name: Run mypy
         run: mypy .
+
+      - name: Run database migrations
+        run: alembic upgrade head
 
       - name: Run pytest
         run: pytest
