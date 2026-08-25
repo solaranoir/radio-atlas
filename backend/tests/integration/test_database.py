@@ -317,12 +317,17 @@ def test_rejects_duplicate_sequence_less_spot_with_null_frequency(
 def test_duplicate_solar_condition_is_ignored(
     db_session: Session,
 ) -> None:
-    provider = db_session.scalar(select(Provider).where(Provider.name == "noaa"))
+    provider = Provider(
+        name="test_noaa_duplicate_solar",
+        display_name="Test NOAA Duplicate Solar",
+        provider_type="solar",
+    )
 
-    assert provider is not None
+    db_session.add(provider)
+    db_session.flush()
 
     observation = SolarObservation(
-        provider="noaa",
+        provider="test_noaa_duplicate_solar",
         observed_at=datetime(
             2099,
             1,
