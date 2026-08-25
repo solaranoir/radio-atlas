@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
+from app.api.validation import validate_time_range
+from app.infrastructure.database.models import Spot
 from app.repositories.observations import list_observations
 
 router = APIRouter(
@@ -53,7 +55,11 @@ def get_observations(
         default=0,
         ge=0,
     ),
-) -> list[ObservationResponse]:
+) -> list[Spot]:
+    validate_time_range(
+        start_time,
+        end_time,
+    )
     observations = list_observations(
         session,
         start_time=start_time,
@@ -63,4 +69,4 @@ def get_observations(
         offset=offset,
     )
 
-    return [ObservationResponse.model_validate(observation) for observation in observations]
+    return observations

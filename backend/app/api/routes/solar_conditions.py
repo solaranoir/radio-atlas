@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
+from app.api.validation import validate_time_range
+from app.infrastructure.database.models import SolarCondition
 from app.repositories.solar_conditions import list_solar_conditions
 
 router = APIRouter(
@@ -47,7 +49,11 @@ def get_solar_conditions(
         default=0,
         ge=0,
     ),
-) -> list[SolarConditionResponse]:
+) -> list[SolarCondition]:
+    validate_time_range(
+        start_time,
+        end_time,
+    )
     conditions = list_solar_conditions(
         session,
         observation_type=observation_type,
@@ -57,4 +63,4 @@ def get_solar_conditions(
         offset=offset,
     )
 
-    return [SolarConditionResponse.model_validate(condition) for condition in conditions]
+    return conditions
