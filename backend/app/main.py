@@ -14,6 +14,7 @@ from app.api.errors import (
 )
 from app.api.middleware import request_id_middleware
 from app.api.router import api_router
+from app.api.routes.health import router as health_router
 from app.logging.logger import configure_logging
 
 
@@ -30,6 +31,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(api_router)
+    app.include_router(health_router)
 
     app.middleware("http")(request_id_middleware)
 
@@ -47,10 +49,6 @@ def create_app() -> FastAPI:
         ResponseValidationError,
         response_validation_error_handler,
     )
-
-    @app.get("/health")
-    async def health() -> dict[str, str]:
-        return {"status": "ok"}
 
     return app
 
