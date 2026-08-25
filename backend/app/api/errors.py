@@ -4,6 +4,7 @@ from fastapi.exceptions import (
     ResponseValidationError,
 )
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 
 class APIError(Exception):
@@ -18,6 +19,23 @@ class APIError(Exception):
         self.message = message
 
         super().__init__(message)
+
+
+class APIErrorDetail(BaseModel):
+    code: str
+    message: str
+
+
+class APIErrorResponse(BaseModel):
+    error: APIErrorDetail
+
+
+class ValidationErrorDetail(APIErrorDetail):
+    details: list[dict[str, object]]
+
+
+class ValidationErrorResponse(BaseModel):
+    error: ValidationErrorDetail
 
 
 async def api_error_handler(
