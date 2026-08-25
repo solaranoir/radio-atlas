@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 
 from app.domain import (
@@ -11,7 +12,6 @@ from app.domain import (
 )
 from app.infrastructure.database.models import (
     Provider,
-    SolarCondition,
     Spot,
 )
 from app.ingestion.persistence import (
@@ -101,10 +101,8 @@ def test_ensure_providers_is_idempotent() -> None:
     session.add.assert_not_called()
 
 
-def test_persist_observation_creates_solar_condition() -> None:
+def test_persist_observation_executes_solar_condition_insert() -> None:
     session = MagicMock(spec=Session)
-
-    # get_provider_id()
     session.scalar.return_value = 7
 
     observation = SolarObservation(
@@ -131,17 +129,59 @@ def test_persist_observation_creates_solar_condition() -> None:
         observation,
     )
 
-    session.add.assert_called_once()
+    session.add.assert_not_called()
+    session.execute.assert_called_once()
 
-    model = session.add.call_args.args[0]
+    statement = session.execute.call_args.args[0]
 
-    assert isinstance(model, SolarCondition)
-    assert model.provider_id == 7
-    assert model.observation_type == "kp_index"
-    assert model.value == 2.0
-    assert model.unit == "kp"
-    assert model.observed_at == observation.observed_at
-    assert model.data == observation.data
+    assert statement.table.name == "solar_conditions"
+
+    compiled = statement.compile()
+    params = compiled.params
+
+    assert params["provider_id"] == 7
+    assert params["observation_type"] == "kp_index"
+    assert params["observed_at"] == observation.observed_at
+    assert params["value"] == 2.0
+    assert params["unit"] == "kp"
+    assert params["data"] == observation.data
+
+
+def test_solar_condition_insert_ignores_duplicate_conflicts() -> None:
+    session = MagicMock(spec=Session)
+    session.scalar.return_value = 7
+
+    observation = SolarObservation(
+        provider="noaa",
+        observed_at=datetime(
+            2026,
+            8,
+            20,
+            12,
+            0,
+            tzinfo=UTC,
+        ),
+        observation_type="kp_index",
+        value=2.0,
+        unit="kp",
+        data={},
+    )
+
+    persist_observation(
+        session,
+        observation,
+    )
+
+    statement = session.execute.call_args.args[0]
+
+    sql = str(
+        statement.compile(
+            dialect=postgresql.dialect(),  # type: ignore[no-untyped-call]
+        )
+    )
+
+    assert "ON CONFLICT" in sql
+    assert "DO NOTHING" in sql
 
 
 def test_persist_observation_creates_spot() -> None:

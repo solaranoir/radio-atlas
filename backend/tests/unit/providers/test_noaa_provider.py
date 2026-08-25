@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 import pytest
@@ -48,7 +49,7 @@ async def test_fetch_solar_flux() -> None:
     observation = observations[0]
 
     assert observation.provider == "noaa"
-    assert observation.data["observed_at"] == "2026-08-18T22:00:00"
+    assert observation.data["observed_at"] == "2026-08-18T22:00:00Z"
     assert observation.data["frequency_mhz"] == 2800
     assert observation.data["flux_sfu"] == 124.0
     assert observation.data["reporting_schedule"] == "Afternoon"
@@ -77,7 +78,7 @@ async def test_fetch_kp() -> None:
     observation = observations[0]
 
     assert observation.provider == "noaa"
-    assert observation.data["observed_at"] == "2026-08-19T17:31:00"
+    assert observation.data["observed_at"] == "2026-08-19T17:31:00Z"
     assert observation.data["kp_index"] == 1.0
     assert observation.data["estimated_kp"] == 0.67
     assert observation.data["category"] == "1M"
@@ -87,8 +88,8 @@ async def test_fetch_kp() -> None:
 async def test_fetch_sunspots() -> None:
     payload = [
         {
-            "Obsdate": "2026-08-19T00:00:00",
-            "swpc_ssn": 66,
+            "Obsdate": "2026-08-19",
+            "swpc_ssn": 124,
         }
     ]
 
@@ -103,8 +104,8 @@ async def test_fetch_sunspots() -> None:
     observation = observations[0]
 
     assert observation.provider == "noaa"
-    assert observation.data["observed_at"] == "2026-08-19T00:00:00"
-    assert observation.data["sunspot_number"] == 66
+    assert observation.data["observed_at"] == "2026-08-19T00:00:00Z"
+    assert observation.data["sunspot_number"] == 124
 
 
 @pytest.mark.asyncio
@@ -128,7 +129,7 @@ async def test_fetch_magnetic_field() -> None:
 
     observation = observations[0]
 
-    assert observation.data["observed_at"] == "2026-08-19T17:30:01"
+    assert observation.data["observed_at"] == "2026-08-19T17:30:01Z"
     assert observation.data["total_field_nt"] == 3.56
     assert observation.data["bz_gsm_nt"] == -0.41
     assert observation.data["data_quality"] == 0
@@ -156,7 +157,7 @@ async def test_fetch_solar_wind() -> None:
 
     observation = observations[0]
 
-    assert observation.data["observed_at"] == "2026-08-19T17:29:07"
+    assert observation.data["observed_at"] == "2026-08-19T17:29:07Z"
     assert observation.data["proton_speed_kms"] == 546.1
     assert observation.data["proton_density_cm3"] == 2.32
     assert observation.data["proton_temperature_k"] == 164930.0
@@ -288,6 +289,27 @@ async def test_sunspots_missing_required_field() -> None:
 
     with pytest.raises(NOAAResponseError):
         await provider._fetch_sunspots()
+
+
+@pytest.mark.asyncio
+async def test_sunspot_observed_at_is_timezone_aware() -> None:
+    payload = [
+        {
+            "Obsdate": "2026-08-25",
+            "swpc_ssn": 124,
+        }
+    ]
+
+    provider = NOAAProvider(
+        http_client=FakeJsonHttpClient(payload),  # type: ignore[arg-type]
+    )
+
+    observations = await provider._fetch_sunspots()
+
+    observed_at = datetime.fromisoformat(observations[0].data["observed_at"].replace("Z", "+00:00"))
+
+    assert observed_at.tzinfo is not None
+    assert observed_at.utcoffset() is not None
 
 
 @pytest.mark.asyncio

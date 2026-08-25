@@ -13,17 +13,62 @@ This allows NOAA, PSK Reporter, and future data sources to participate in
 the ingestion architecture through a consistent contract.
 
 ## Contract Summary
-    
+
+Every provider must implement ObservationProvider and one supported
+execution contract: PollingObservationProvider or
+StreamingObservationProvider.
+
 Every provider must:
-    
+
 | Requirement | Mandatory |
 | --- | --- |
 | Implement `ObservationProvider` | Yes |
 | Implement `name` | Yes |
-| Implement `fetch()` | Yes |
+| Implement `supported execution contract` | Yes |
 | Use asynchronous operations | Yes |
-| Return `list[ProviderObservation]` | Yes |
+| Produce `ProviderObservation` instances | Yes |
 | Provide unit tests | Yes |
+
+## Provider Contract
+
+Radio Atlas supports two provider execution models:
+
+- Polling providers fetch a finite batch of observations.
+- Streaming providers yield observations continuously.
+
+All providers share a common identity contract and then implement the
+execution model appropriate to their source.
+
+```python
+class ObservationProvider(ABC):
+    @property
+    @abstractmethod
+    def name(self) -> str: ...
+
+
+class PollingObservationProvider(ObservationProvider):
+    @abstractmethod
+    async def fetch(self) -> list[ProviderObservation]: ...
+
+
+class StreamingObservationProvider(ObservationProvider):
+    @abstractmethod
+    def stream(self) -> AsyncIterator[ProviderObservation]: ...
+```
+
+### NOAA
+
+`NOAAProvider` implements `PollingObservationProvider`.
+
+NOAA is polled periodically and returns a finite batch of normalized
+`ProviderObservation` records from each fetch cycle.
+
+### PSK Reporter
+
+`PSKReporterProvider` implements `StreamingObservationProvider`.
+
+PSK Reporter consumes the MQTT stream continuously and yields normalized
+`ProviderObservation` records as messages arrive.
 
 ## Provider Architecture
 
@@ -35,12 +80,38 @@ flowchart TD
     D --> E[Radio Atlas Domain Models]
 ```
 
+```mermaid
+classDiagram
+    class ObservationProvider {
+        <<abstract>>
+        +name: str
+    }
+
+    class PollingObservationProvider {
+        <<abstract>>
+        +fetch() list~ProviderObservation~
+    }
+
+    class StreamingObservationProvider {
+        <<abstract>>
+        +stream() AsyncIterator~ProviderObservation~
+    }
+
+    class NOAAProvider
+    class PSKReporterProvider
+
+    ObservationProvider <|-- PollingObservationProvider
+    ObservationProvider <|-- StreamingObservationProvider
+    PollingObservationProvider <|-- NOAAProvider
+    StreamingObservationProvider <|-- PSKReporterProvider
+```
+
 ## ObservationProvider Interface
 
 All external data providers must implement `ObservationProvider`.
 
-The interface defines the minimum behavior required for participation in
-the Radio Atlas ingestion system.
+The common interface defines provider identity only. Providers then implement
+the execution contract appropriate to their data source.
 
 ```python
 class ObservationProvider(ABC):
@@ -48,33 +119,39 @@ class ObservationProvider(ABC):
     @abstractmethod
     def name(self) -> str:
         """Return the unique provider name."""
+``
 
+### PollingObservationProvider
+
+Polling providers retrieve a finite batch of observations.
+
+```python
+class PollingObservationProvider(ObservationProvider):
     @abstractmethod
     async def fetch(self) -> list[ProviderObservation]:
-        """Fetch observations from the external provider."""
+        """Fetch a batch of observations from the external provider."""
 ```
+
+### StreamingObservationProvider
+
+Streaming providers yield observations continuously.
+
+```python
+class StreamingObservationProvider(ObservationProvider):
+    @abstractmethod
+    def stream(self) -> AsyncIterator[ProviderObservation]:
+        """Stream observations from the external provider."""
+```
+
 ### Required Methods
 
-#### `name`
+All providers must expose a unique `name`.
 
-Returns the provider's unique identifier.
+Polling providers must implement asynchronous `fetch()` and return a finite
+`list[ProviderObservation]`.
 
-Examples:
-
-- `mock`
-- `noaa`
-- `psk_reporter`
-
-#### `fetch`
-
-Retrieves observations from the external data source.
-
-The method must:
-
-- Be asynchronous
-- Return a `list[ProviderObservation]`
-- Return an empty list when no observations are available
-- Never return `None`
+Streaming providers must implement `stream()` and yield
+`ProviderObservation` instances asynchronously.
 
 ## ProviderObservation
 
@@ -132,13 +209,20 @@ A provider is not responsible for:
 
 Provider operations that access external services must be asynchronous.
 
-Consumers call providers using:
+Polling providers are consumed with:
 
 ```python
 observations = await provider.fetch()
 ```
-Future provider implementations should avoid blocking operations inside
-fetch().
+
+Streaming providers are consumed with:
+
+```python
+async for observation in provider.stream():
+    ...
+```
+Provider implementations should avoid blocking operations in either execution
+model.
 
 ## Error Handling Expectations
 
@@ -157,37 +241,42 @@ provider implementation stories.
 Every provider implementation should have unit tests verifying that it:
 
 - Implements `ObservationProvider`
+- Implements the correct execution contract
 - Exposes the expected provider name
-- Implements asynchronous `fetch()`
-- Returns `ProviderObservation` instances
-- Handles empty results
+- Produces `ProviderObservation` instances
 - Handles provider-specific failure conditions
+- Preserves cancellation behavior where applicable
 
-Tests that consume providers should prefer mock providers when external
-network access is not part of the behavior under test.
+Polling providers should additionally test finite fetch results and empty
+results.
+
+Streaming providers should additionally test yielded observations,
+reconnection behavior, and stream cancellation.
 
 ## Adding a New Provider
 
 To add a provider:
 
 1. Create a provider implementation under `app/providers/`.
-2. Subclass `ObservationProvider`.
+2. Subclass either `PollingObservationProvider` or
+   `StreamingObservationProvider`.
 3. Implement the `name` property.
-4. Implement asynchronous `fetch()`.
-5. Return a `list[ProviderObservation]`.
+4. Implement the execution method required by the chosen contract.
+5. Produce `ProviderObservation` instances.
 6. Add unit tests for the provider contract.
-7. Export the provider from `app.providers` if it is part of the public provider API.
+7. Export the provider from `app.providers` if it is part of the public
+   provider API.
 
 ### Example
 
 ```python
 from app.providers.base import (
-    ObservationProvider,
+    PollingObservationProvider,
     ProviderObservation,
 )
 
 
-class ExampleProvider(ObservationProvider):
+class ExampleProvider(PollingObservationProvider):
     @property
     def name(self) -> str:
         return "example"
@@ -202,26 +291,30 @@ class ExampleProvider(ObservationProvider):
 flowchart TD
     A[Ingestion Service] --> B[ObservationProvider]
 
-    B --> C[NOAAProvider]
-    B --> D[PSKReporterProvider]
-    B --> E[MockObservationProvider]
+    B --> C[PollingObservationProvider]
+    B --> D[StreamingObservationProvider]
 
-    C --> F[NOAA]
-    D --> G[PSK Reporter]
+    C --> E[NOAAProvider]
+    C --> F[MockObservationProvider]
+    D --> G[PSKReporterProvider]
 
-    C --> H[ProviderObservation]
-    D --> H
-    E --> H
+    E --> H[NOAA]
+    G --> I[PSK Reporter]
 
-    H --> I[Normalization Pipeline]
+    E --> J[ProviderObservation]
+    F --> J
+    G --> J
+
+    J --> K[Normalization Pipeline]
 ```
+
 The provider layer separates external services from the internal domain model.
 
 Providers retrieve and transform external data into `ProviderObservation`
 objects. Normalization into Radio Atlas domain models occurs later in the
 ingestion pipeline.
 
-## Provider Fetch Sequence
+## Polling Provider Sequence
 
 ```mermaid
 sequenceDiagram
@@ -235,6 +328,24 @@ sequenceDiagram
     E-->>P: Provider response
     P-->>I: list[ProviderObservation]
     I->>N: Normalize observations
+```
+
+## Streaming Provider Sequence
+
+```mermaid
+sequenceDiagram
+    participant I as Ingestion Service
+    participant P as StreamingObservationProvider
+    participant E as External Provider
+    participant N as Normalization Pipeline
+
+    I->>P: stream()
+    P->>E: Establish stream
+    loop For each observation
+        E-->>P: Provider message
+        P-->>I: ProviderObservation
+        I->>N: Normalize observation
+    end
 ```
 
 ## Mock Provider Test Sequence
@@ -258,6 +369,8 @@ The executable provider contract is defined in:
 
 - `backend/app/providers/base.py`
 - `backend/app/providers/mock.py`
+- `backend/app/providers/noaa.py`
+- `backend/app/providers/psk_reporter.py`
 
 Contract tests are located in:
 
@@ -269,6 +382,7 @@ and its tests are the authoritative behavior.
 Documentation should be updated whenever changes are made to:
 
 - `ObservationProvider`
+- `PollingObservationProvider`
+- `StreamingObservationProvider`
 - `ProviderObservation`
-- `MockObservationProvider`
-
+- concrete provider execution models

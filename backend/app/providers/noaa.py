@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from time import perf_counter
 from typing import Any
 
@@ -16,7 +17,7 @@ from app.models.noaa import (
     SunspotNumber,
 )
 from app.providers.base import (
-    ObservationProvider,
+    PollingObservationProvider,
     ProviderObservation,
 )
 from app.services.http import JsonHttpClient
@@ -26,11 +27,20 @@ logger = get_logger(__name__)
 DEFAULT_NOAA_BASE_URL = "https://services.swpc.noaa.gov"
 
 
+def _parse_utc_datetime(value: object) -> datetime:
+    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+
+    return parsed.astimezone(UTC)
+
+
 class NOAAResponseError(RuntimeError):
     """Raised when NOAA returns an unusable payload."""
 
 
-class NOAAProvider(ObservationProvider):
+class NOAAProvider(PollingObservationProvider):
     def __init__(
         self,
         *,
@@ -149,7 +159,7 @@ class NOAAProvider(ObservationProvider):
 
         try:
             solar_flux = SolarFlux(
-                observed_at=record["time_tag"],
+                observed_at=_parse_utc_datetime(record["time_tag"]),
                 frequency_mhz=record["frequency"],
                 flux_sfu=record["flux"],
                 reporting_schedule=record["reporting_schedule"],
@@ -192,7 +202,7 @@ class NOAAProvider(ObservationProvider):
 
         try:
             kp = KpIndex(
-                observed_at=record["time_tag"],
+                observed_at=_parse_utc_datetime(record["time_tag"]),
                 kp_index=record["kp_index"],
                 estimated_kp=record["estimated_kp"],
                 category=record["kp"],
@@ -234,7 +244,7 @@ class NOAAProvider(ObservationProvider):
 
         try:
             sunspots = SunspotNumber(
-                observed_at=record["Obsdate"],
+                observed_at=_parse_utc_datetime(record["Obsdate"]),
                 sunspot_number=record["swpc_ssn"],
             )
         except (
@@ -274,7 +284,7 @@ class NOAAProvider(ObservationProvider):
 
         try:
             magnetic_field = SolarMagneticField(
-                observed_at=record["time_tag"],
+                observed_at=_parse_utc_datetime(record["time_tag"]),
                 total_field_nt=record["bt"],
                 bz_gsm_nt=record["bz_gsm"],
                 data_quality=record["overall_quality"],
@@ -316,7 +326,7 @@ class NOAAProvider(ObservationProvider):
 
         try:
             solar_wind = SolarWind(
-                observed_at=record["time_tag"],
+                observed_at=_parse_utc_datetime(record["time_tag"]),
                 proton_speed_kms=record["proton_speed"],
                 proton_density_cm3=record["proton_density"],
                 proton_temperature_k=record["proton_temperature"],
@@ -400,8 +410,12 @@ class NOAAProvider(ObservationProvider):
             ]
 
             forecast = AuroraForecast(
-                observed_at=payload["Observation Time"],
-                forecast_at=payload["Forecast Time"],
+                observed_at=_parse_utc_datetime(
+                    payload["Observation Time"],
+                ),
+                forecast_at=_parse_utc_datetime(
+                    payload["Forecast Time"],
+                ),
                 cells=cells,
             )
 

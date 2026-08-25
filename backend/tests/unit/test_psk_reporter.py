@@ -194,3 +194,57 @@ def test_psk_reporter_spot_normalizes() -> None:
     assert normalized.snr_db == -5
     assert normalized.sender_entity_id == 281
     assert normalized.receiver_entity_id == 230
+
+
+def test_callsign_strips_ssid_suffix() -> None:
+    assert Callsign(value="KM3T-3").value == "KM3T"
+
+
+def test_callsign_strips_two_digit_ssid_suffix() -> None:
+    assert Callsign(value="W1ABC-12").value == "W1ABC"
+
+
+def test_callsign_preserves_base_callsign() -> None:
+    assert Callsign(value="kk7qea").value == "KK7QEA"
+
+
+def test_callsign_does_not_strip_invalid_large_suffix() -> None:
+    assert Callsign(value="W1ABC-99").value == "W1ABC-99"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("V2/KK7QEA", "V2/KK7QEA"),
+        ("KK7QEA/P", "KK7QEA/P"),
+        ("EA8/KK7QEA/P", "EA8/KK7QEA/P"),
+        ("V2/KK7QEA-3", "V2/KK7QEA"),
+    ],
+)
+def test_callsign_preserves_slash_forms_and_strips_ssid(
+    raw: str,
+    expected: str,
+) -> None:
+    assert Callsign(value=raw).value == expected
+
+
+def test_psk_spot_normalizes_receiver_ssid_suffix() -> None:
+    spot = PSKReporterSpot(
+        sequence_number=71869170759,
+        frequency_hz=14075361,
+        mode="ft8",
+        snr_db=-5,
+        observed_at=1787168040,
+        transmitted_at=1787168025,
+        sender_callsign="ea5jln",
+        sender_locator="im99tn",
+        receiver_callsign="KM3T-3",
+        receiver_locator="jn39lh",
+        sender_entity_id=281,
+        receiver_entity_id=230,
+        band="20M",
+    )
+
+    normalized = spot.normalize()
+
+    assert normalized.receiver_callsign.value == "KM3T"

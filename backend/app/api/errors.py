@@ -1,3 +1,5 @@
+from typing import cast
+
 from fastapi import Request
 from fastapi.exceptions import (
     RequestValidationError,
@@ -42,15 +44,14 @@ async def api_error_handler(
     request: Request,
     exc: Exception,
 ) -> JSONResponse:
-    if not isinstance(exc, APIError):
-        raise exc
+    api_error = cast(APIError, exc)
 
     return JSONResponse(
-        status_code=exc.status_code,
+        status_code=api_error.status_code,
         content={
             "error": {
-                "code": exc.code,
-                "message": exc.message,
+                "code": api_error.code,
+                "message": api_error.message,
             }
         },
     )

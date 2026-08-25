@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict
@@ -42,7 +42,7 @@ class SolarConditionResponse(BaseModel):
     observed_at: datetime
     value: float | None
     unit: str | None
-    data: dict[str, object]
+    data: dict[str, Any]
 
 
 @router.get(
