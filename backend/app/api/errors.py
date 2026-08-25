@@ -1,4 +1,8 @@
 from fastapi import Request
+from fastapi.exceptions import (
+    RequestValidationError,
+    ResponseValidationError,
+)
 from fastapi.responses import JSONResponse
 
 
@@ -29,6 +33,43 @@ async def api_error_handler(
             "error": {
                 "code": exc.code,
                 "message": exc.message,
+            }
+        },
+    )
+
+
+async def response_validation_error_handler(
+    request: Request,
+    exc: Exception,
+) -> JSONResponse:
+    if not isinstance(exc, ResponseValidationError):
+        raise exc
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": "response_validation_error",
+                "message": "Response validation failed",
+            }
+        },
+    )
+
+
+async def request_validation_error_handler(
+    request: Request,
+    exc: Exception,
+) -> JSONResponse:
+    if not isinstance(exc, RequestValidationError):
+        raise exc
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": {
+                "code": "validation_error",
+                "message": "Request validation failed",
+                "details": exc.errors(),
             }
         },
     )

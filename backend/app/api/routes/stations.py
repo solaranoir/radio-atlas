@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
+from app.infrastructure.database.models import Station
 from app.repositories.stations import list_stations
 
 router = APIRouter(
@@ -46,7 +47,7 @@ def get_stations(
         default=0,
         ge=0,
     ),
-) -> list[StationResponse]:
+) -> list[Station]:
     stations = list_stations(
         session,
         callsign=callsign,
@@ -54,4 +55,4 @@ def get_stations(
         offset=offset,
     )
 
-    return [StationResponse.model_validate(station) for station in stations]
+    return stations
