@@ -23,6 +23,10 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="SolaraSphere: Radio Atlas API",
         version="0.1.0",
+        description=(
+            "Radio Atlas Phase 1 API for normalized amateur-radio "
+            "observations, solar conditions, and station data."
+        ),
     )
 
     app.include_router(api_router)

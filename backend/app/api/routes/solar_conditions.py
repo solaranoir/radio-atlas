@@ -17,7 +17,24 @@ router = APIRouter(
 
 
 class SolarConditionResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "id": 17,
+                "provider_id": 1,
+                "observation_type": "solar_wind",
+                "observed_at": "2026-08-20T12:00:00Z",
+                "value": 432.5,
+                "unit": "km/s",
+                "data": {
+                    "density": 6.2,
+                    "temperature": 118000,
+                    "source": "ACE",
+                },
+            }
+        },
+    )
 
     id: int
     provider_id: int
@@ -31,6 +48,23 @@ class SolarConditionResponse(BaseModel):
 @router.get(
     "",
     response_model=list[SolarConditionResponse],
+    summary="List solar conditions",
+    description=(
+        "Returns normalized NOAA solar and space-weather observations. "
+        "Results are ordered newest-first and may be filtered "
+        "by observation type and time range."
+    ),
+    responses={
+        400: {
+            "description": "Invalid time range",
+        },
+        422: {
+            "description": "Request validation error",
+        },
+        500: {
+            "description": "Response validation error",
+        },
+    },
 )
 def get_solar_conditions(
     session: Annotated[

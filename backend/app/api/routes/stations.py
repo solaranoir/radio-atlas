@@ -16,7 +16,21 @@ router = APIRouter(
 
 
 class StationResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "id": 42,
+                "callsign": "KK7QEA",
+                "grid_square": "DM25",
+                "latitude": 36.0395,
+                "longitude": -114.9817,
+                "entity_id": 291,
+                "first_seen_at": "2026-08-20T12:00:00Z",
+                "last_seen_at": "2026-08-24T17:30:00Z",
+            }
+        },
+    )
 
     id: int
     callsign: str
@@ -31,6 +45,20 @@ class StationResponse(BaseModel):
 @router.get(
     "",
     response_model=list[StationResponse],
+    summary="List amateur radio stations",
+    description=(
+        "Returns amateur radio stations observed by Radio Atlas. "
+        "Results are ordered by callsign ascending and may be filtered "
+        "by callsign."
+    ),
+    responses={
+        422: {
+            "description": "Request validation error",
+        },
+        500: {
+            "description": "Response validation error",
+        },
+    },
 )
 def get_stations(
     session: Annotated[
