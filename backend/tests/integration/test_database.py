@@ -2,17 +2,21 @@ from collections.abc import Generator
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import Settings
+from app.domain import (
+    SolarObservation,
+)
 from app.infrastructure.database.models import (
     Provider,
     SolarCondition,
     Spot,
     Station,
 )
+from app.ingestion.persistence import persist_observation
 
 
 @pytest.fixture
@@ -308,3 +312,57 @@ def test_rejects_duplicate_sequence_less_spot_with_null_frequency(
 
     with pytest.raises(IntegrityError):
         db_session.flush()
+
+
+def test_duplicate_solar_condition_is_ignored(
+    db_session: Session,
+) -> None:
+    provider = Provider(
+        name="test_noaa_duplicate_solar",
+        display_name="Test NOAA Duplicate Solar",
+        provider_type="solar",
+    )
+
+    db_session.add(provider)
+    db_session.flush()
+
+    observation = SolarObservation(
+        provider="test_noaa_duplicate_solar",
+        observed_at=datetime(
+            2099,
+            1,
+            1,
+            12,
+            34,
+            56,
+            tzinfo=UTC,
+        ),
+        observation_type="solar_flux",
+        value=132.0,
+        unit="sfu",
+        data={},
+    )
+
+    persist_observation(
+        db_session,
+        observation,
+    )
+    db_session.flush()
+
+    persist_observation(
+        db_session,
+        observation,
+    )
+    db_session.flush()
+
+    count = db_session.scalar(
+        select(func.count())
+        .select_from(SolarCondition)
+        .where(
+            SolarCondition.provider_id == provider.id,
+            SolarCondition.observation_type == observation.observation_type,
+            SolarCondition.observed_at == observation.observed_at,
+        )
+    )
+
+    assert count == 1

@@ -13,6 +13,7 @@ from app.models.psk_reporter import (
 )
 from app.providers.base import (
     ProviderObservation,
+    StreamingObservationProvider,
 )
 
 logger = get_logger(__name__)
@@ -29,7 +30,7 @@ class PSKReporterError(RuntimeError):
     """Raised when PSK Reporter ingestion fails."""
 
 
-class PSKReporterProvider:
+class PSKReporterProvider(StreamingObservationProvider):
     name = "psk_reporter"
 
     def __init__(

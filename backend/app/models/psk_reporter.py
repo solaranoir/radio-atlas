@@ -11,6 +11,12 @@ class Callsign(BaseModel):
     def normalize_callsign(cls, value: str) -> str:
         normalized = value.strip().upper()
 
+        if "-" in normalized:
+            base, suffix = normalized.rsplit("-", maxsplit=1)
+
+            if suffix.isdigit() and 0 <= int(suffix) <= 15:
+                normalized = base
+
         if not normalized:
             raise ValueError("callsign must not be empty")
 

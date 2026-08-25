@@ -1,7 +1,10 @@
-from app.providers.base import ObservationProvider, ProviderObservation
+from app.providers.base import (
+    PollingObservationProvider,
+    ProviderObservation,
+)
 
 
-class MockObservationProvider(ObservationProvider):
+class MockObservationProvider(PollingObservationProvider):
     def __init__(
         self,
         observations: list[ProviderObservation] | None = None,

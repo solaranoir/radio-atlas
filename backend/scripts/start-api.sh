@@ -1,13 +1,10 @@
 #!/usr/bin/env sh
-
 set -eu
 
-echo "Starting SolaraSphere: Radio Atlas API"
+echo "Applying database migrations..."
+alembic upgrade head
 
-# When Alembic is added, migrations can be enabled here:
-# alembic upgrade head
-
+echo "Starting Radio Atlas API..."
 exec uvicorn app.main:app \
     --host 0.0.0.0 \
-    --port 8000 \
-    --reload
+    --port 8000

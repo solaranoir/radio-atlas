@@ -57,7 +57,7 @@ def normalize_psk_observation(
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise ObservationNormalizationError(
-            "PSK Reporter observation could not be normalized"
+            f"PSK Reporter observation could not be normalized: {exc}"
         ) from exc
 
 
@@ -196,4 +196,6 @@ def normalize_noaa_observation(
         )
 
     except (KeyError, TypeError, ValueError) as exc:
-        raise ObservationNormalizationError("NOAA observation could not be normalized") from exc
+        raise ObservationNormalizationError(
+            f"NOAA observation could not be normalized: {exc}"
+        ) from exc

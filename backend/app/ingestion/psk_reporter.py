@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from app.health import psk_reporter_health
 from app.ingestion.persistence import persist_observation
 from app.observations.deduplication import ObservationDeduplicator
 from app.observations.normalizer import normalize_observation
@@ -12,15 +13,19 @@ async def run_psk_reporter_ingestion(
 ) -> None:
     deduplicator = ObservationDeduplicator()
 
-    async for observation in provider.stream():
-        normalized = normalize_observation(observation)
+    async for provider_observation in provider.stream():
+        observation = normalize_observation(
+            provider_observation,
+        )
 
-        if deduplicator.is_duplicate(normalized):
+        if deduplicator.is_duplicate(observation):
             continue
 
         persist_observation(
             session,
-            normalized,
+            observation,
         )
 
         session.commit()
+
+        psk_reporter_health.record_success()

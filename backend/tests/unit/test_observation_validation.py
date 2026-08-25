@@ -7,6 +7,7 @@ from app.domain import (
     SpotObservation,
     StationObservation,
 )
+from app.domain.observations import _validate_callsign
 
 
 def test_rejects_naive_observed_at() -> None:
@@ -152,3 +153,180 @@ def test_accepts_extended_grid_precision() -> None:
     )
 
     assert observation.grid_square == "DM43AH94KC"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("kk7qea", "KK7QEA"),
+        ("  kk7qea  ", "KK7QEA"),
+        ("v2/kk7qea", "V2/KK7QEA"),
+        ("ea8/kk7qea/p", "EA8/KK7QEA/P"),
+        ("kk7qea/mm", "KK7QEA/MM"),
+        ("ve7abc/k7", "VE7ABC/K7"),
+    ],
+)
+def test_validate_callsign_normalizes_valid_callsigns(
+    raw: str,
+    expected: str,
+) -> None:
+    assert _validate_callsign(raw) == expected
+
+
+@pytest.mark.parametrize(
+    "callsign",
+    [
+        "",
+        "   ",
+    ],
+)
+def test_validate_callsign_rejects_empty_callsign(
+    callsign: str,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="callsign must not be empty",
+    ):
+        _validate_callsign(callsign)
+
+
+def test_validate_callsign_accepts_maximum_length() -> None:
+    callsign = "A" * 32
+
+    assert _validate_callsign(callsign) == callsign
+
+
+def test_validate_callsign_rejects_callsign_over_maximum_length() -> None:
+    with pytest.raises(
+        ValueError,
+        match="callsign is too long",
+    ):
+        _validate_callsign("A" * 33)
+
+
+@pytest.mark.parametrize(
+    "callsign",
+    [
+        "/KK7QEA",
+        "KK7QEA/",
+        "/V2/KK7QEA",
+        "EA8/KK7QEA/P/",
+    ],
+)
+def test_validate_callsign_rejects_leading_or_trailing_slash(
+    callsign: str,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="callsign contains invalid separator placement",
+    ):
+        _validate_callsign(callsign)
+
+
+@pytest.mark.parametrize(
+    "callsign",
+    [
+        "KK7QEA//P",
+        "EA8//KK7QEA",
+        "EA8/KK7QEA//P",
+    ],
+)
+def test_validate_callsign_rejects_double_slash(
+    callsign: str,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="callsign contains invalid separator placement",
+    ):
+        _validate_callsign(callsign)
+
+
+@pytest.mark.parametrize(
+    "callsign",
+    [
+        "KK7QEA",
+        "V2/KK7QEA",
+        "KK7QEA/P",
+        "EA8/KK7QEA/P",
+        "SWL-EL98GK",
+    ],
+)
+def test_validate_callsign_accepts_valid_station_identifiers(
+    callsign: str,
+) -> None:
+    assert _validate_callsign(callsign) == callsign
+
+
+@pytest.mark.parametrize(
+    "callsign",
+    [
+        "/KK7QEA",
+        "KK7QEA/",
+        "-SWL",
+        "SWL-",
+        "KK7QEA//P",
+        "SWL--EL98GK",
+        "KK7 QEA",
+        "KK7QEA!",
+    ],
+)
+def test_validate_callsign_rejects_invalid_station_identifiers(
+    callsign: str,
+) -> None:
+    with pytest.raises(ValueError):
+        _validate_callsign(callsign)
+
+
+@pytest.mark.parametrize(
+    "callsign",
+    [
+        "/KK7QEA",
+        "KK7QEA/",
+        "-SWL",
+        "SWL-",
+        "KK7QEA//P",
+        "SWL--EL98GK",
+    ],
+)
+def test_validate_callsign_rejects_invalid_separator_placement(
+    callsign: str,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="callsign contains invalid separator placement",
+    ):
+        _validate_callsign(callsign)
+
+
+@pytest.mark.parametrize(
+    "callsign",
+    [
+        "KK7 QEA",
+        "KK7QEA!",
+        "KK7QEA@",
+        "KK7_QEA",
+    ],
+)
+def test_validate_callsign_rejects_invalid_characters(
+    callsign: str,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="callsign contains invalid characters",
+    ):
+        _validate_callsign(callsign)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("kk7qea", "KK7QEA"),
+        ("  v2/kk7qea  ", "V2/KK7QEA"),
+        ("swl-el98gk", "SWL-EL98GK"),
+    ],
+)
+def test_validate_callsign_normalizes_case_and_whitespace(
+    raw: str,
+    expected: str,
+) -> None:
+    assert _validate_callsign(raw) == expected

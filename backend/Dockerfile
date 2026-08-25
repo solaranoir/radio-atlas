@@ -5,7 +5,10 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /code
 
+
 COPY pyproject.toml /code/pyproject.toml
+COPY alembic.ini /code/alembic.ini
+COPY migrations /code/migrations
 COPY app /code/app
 COPY tests /code/tests
 COPY scripts /code/scripts

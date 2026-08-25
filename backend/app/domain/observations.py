@@ -33,8 +33,14 @@ def _validate_callsign(value: str) -> str:
     if len(normalized) > 32:
         raise ValueError("callsign is too long")
 
-    if not all(character.isalnum() or character == "/" for character in normalized):
+    if not all(character.isalnum() or character in {"/", "-"} for character in normalized):
         raise ValueError("callsign contains invalid characters")
+
+    if normalized[0] in {"/", "-"} or normalized[-1] in {"/", "-"}:
+        raise ValueError("callsign contains invalid separator placement")
+
+    if "//" in normalized or "--" in normalized:
+        raise ValueError("callsign contains invalid separator placement")
 
     return normalized
 

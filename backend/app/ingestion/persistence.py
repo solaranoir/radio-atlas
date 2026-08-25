@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.domain import Observation, SolarObservation, SpotObservation
@@ -53,16 +54,26 @@ def _persist_solar_condition(
         observation.provider,
     )
 
-    model = SolarCondition(
-        provider_id=provider_id,
-        observation_type=observation.observation_type,
-        observed_at=observation.observed_at,
-        value=observation.value,
-        unit=observation.unit,
-        data=observation.data,
+    statement = (
+        insert(SolarCondition)
+        .values(
+            provider_id=provider_id,
+            observation_type=observation.observation_type,
+            observed_at=observation.observed_at,
+            value=observation.value,
+            unit=observation.unit,
+            data=observation.data,
+        )
+        .on_conflict_do_nothing(
+            index_elements=[
+                "provider_id",
+                "observation_type",
+                "observed_at",
+            ],
+        )
     )
 
-    session.add(model)
+    session.execute(statement)
 
 
 def _persist_spot(
