@@ -54,9 +54,36 @@ class StationResponse(BaseModel):
     responses={
         422: {
             "description": "Request validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "error": {
+                            "code": "validation_error",
+                            "message": "Request validation failed",
+                            "details": [
+                                {
+                                    "type": "greater_than_equal",
+                                    "loc": ["query", "limit"],
+                                    "msg": ("Input should be greater than or equal to 1"),
+                                }
+                            ],
+                        }
+                    }
+                }
+            },
         },
         500: {
             "description": "Response validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "error": {
+                            "code": "response_validation_error",
+                            "message": "Response validation failed",
+                        }
+                    }
+                }
+            },
         },
     },
 )
@@ -65,22 +92,41 @@ def get_stations(
         Session,
         Depends(get_db),
     ],
-    callsign: str | None = None,
-    limit: int = Query(
-        default=100,
-        ge=1,
-        le=500,
-    ),
-    offset: int = Query(
-        default=0,
-        ge=0,
-    ),
+    callsign: Annotated[
+        str | None,
+        Query(
+            description=(
+                "Filter stations by amateur-radio callsign. "
+                "Callsign matching is case-insensitive and is normalized "
+                "to uppercase for querying."
+            ),
+            examples=["KK7QEA"],
+        ),
+    ] = None,
+    limit: Annotated[
+        int,
+        Query(
+            ge=1,
+            le=500,
+            description=("Maximum number of stations to return. Must be between 1 and 500."),
+            examples=[100],
+        ),
+    ] = 100,
+    offset: Annotated[
+        int,
+        Query(
+            ge=0,
+            description=(
+                "Number of stations to skip before returning results. "
+                "Use with limit for pagination."
+            ),
+            examples=[0],
+        ),
+    ] = 0,
 ) -> list[Station]:
-    stations = list_stations(
+    return list_stations(
         session,
         callsign=callsign,
         limit=limit,
         offset=offset,
     )
-
-    return stations

@@ -188,3 +188,94 @@ def test_query_parameters_are_documented() -> None:
         "limit",
         "offset",
     } <= station_parameters
+
+
+def test_observations_query_parameters_have_examples() -> None:
+    schema = _schema()
+
+    parameters = schema["paths"]["/api/v1/observations"]["get"]["parameters"]
+
+    examples = {
+        parameter["name"]: parameter["schema"].get("examples") or parameter.get("examples")
+        for parameter in parameters
+    }
+
+    assert examples["start_time"]
+    assert examples["end_time"]
+    assert examples["band"]
+    assert examples["limit"]
+    assert examples["offset"]
+
+
+def test_solar_query_parameters_have_examples() -> None:
+    schema = _schema()
+
+    parameters = schema["paths"]["/api/v1/solar-conditions"]["get"]["parameters"]
+
+    examples = {
+        parameter["name"]: parameter["schema"].get("examples") or parameter.get("examples")
+        for parameter in parameters
+    }
+
+    assert examples["observation_type"]
+    assert examples["start_time"]
+    assert examples["end_time"]
+    assert examples["limit"]
+    assert examples["offset"]
+
+
+def test_station_query_parameters_have_examples() -> None:
+    schema = _schema()
+
+    parameters = schema["paths"]["/api/v1/stations"]["get"]["parameters"]
+
+    examples = {
+        parameter["name"]: parameter["schema"].get("examples") or parameter.get("examples")
+        for parameter in parameters
+    }
+
+    assert examples["callsign"]
+    assert examples["limit"]
+    assert examples["offset"]
+
+
+def test_400_error_example_is_documented() -> None:
+    schema = _schema()
+
+    response = schema["paths"]["/api/v1/observations"]["get"]["responses"]["400"]
+
+    example = response["content"]["application/json"]["example"]
+
+    assert example == {
+        "error": {
+            "code": "invalid_time_range",
+            "message": "start_time must be before or equal to end_time",
+        }
+    }
+
+
+def test_422_error_example_is_documented() -> None:
+    schema = _schema()
+
+    response = schema["paths"]["/api/v1/observations"]["get"]["responses"]["422"]
+
+    example = response["content"]["application/json"]["example"]
+
+    assert example["error"]["code"] == "validation_error"
+    assert example["error"]["message"] == "Request validation failed"
+    assert example["error"]["details"]
+
+
+def test_500_error_example_is_documented() -> None:
+    schema = _schema()
+
+    response = schema["paths"]["/api/v1/observations"]["get"]["responses"]["500"]
+
+    example = response["content"]["application/json"]["example"]
+
+    assert example == {
+        "error": {
+            "code": "response_validation_error",
+            "message": "Response validation failed",
+        }
+    }
