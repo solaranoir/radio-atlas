@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from time import perf_counter
 from typing import Any
 
 from pydantic import ValidationError
@@ -78,6 +79,8 @@ class NOAAProvider(ObservationProvider):
         )
 
     async def fetch(self) -> list[ProviderObservation]:
+        started_at = perf_counter()
+
         logger.info(
             "NOAA ingestion started",
             extra={
@@ -86,20 +89,46 @@ class NOAAProvider(ObservationProvider):
             },
         )
 
-        observations: list[ProviderObservation] = []
+        try:
+            observations: list[ProviderObservation] = []
 
-        observations.extend(await self._fetch_solar_flux())
-        observations.extend(await self._fetch_kp())
-        observations.extend(await self._fetch_sunspots())
-        observations.extend(await self._fetch_aurora())
-        observations.extend(await self._fetch_magnetic_field())
-        observations.extend(await self._fetch_solar_wind())
+            observations.extend(await self._fetch_solar_flux())
+            observations.extend(await self._fetch_kp())
+            observations.extend(await self._fetch_sunspots())
+            observations.extend(await self._fetch_aurora())
+            observations.extend(await self._fetch_magnetic_field())
+            observations.extend(await self._fetch_solar_wind())
+
+        except Exception as exc:
+            duration_ms = round(
+                (perf_counter() - started_at) * 1000,
+                2,
+            )
+
+            logger.error(
+                "NOAA ingestion failed",
+                extra={
+                    "provider": self.name,
+                    "operation": "fetch",
+                    "duration_ms": duration_ms,
+                    "error": str(exc),
+                },
+                exc_info=True,
+            )
+
+            raise
+
+        duration_ms = round(
+            (perf_counter() - started_at) * 1000,
+            2,
+        )
 
         logger.info(
             "NOAA ingestion completed",
             extra={
                 "provider": self.name,
                 "operation": "fetch",
+                "duration_ms": duration_ms,
                 "record_count": len(observations),
             },
         )

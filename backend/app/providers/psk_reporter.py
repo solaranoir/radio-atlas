@@ -1,11 +1,12 @@
 import asyncio
 import json
-import logging
 from collections.abc import AsyncGenerator
+from time import perf_counter
 
 import aiomqtt
 from pydantic import ValidationError
 
+from app.logging.logger import get_logger
 from app.models.psk_reporter import (
     NormalizedPSKSpot,
     PSKReporterSpot,
@@ -14,7 +15,7 @@ from app.providers.base import (
     ProviderObservation,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 DEFAULT_MQTT_HOST = "mqtt.pskreporter.info"
 DEFAULT_MQTT_PORT = 1883
@@ -76,11 +77,16 @@ class PSKReporterProvider:
     async def _messages(
         self,
     ) -> AsyncGenerator[ProviderObservation]:
+        started_at = perf_counter()
+        record_count = 0
+
         async with aiomqtt.Client(
             hostname=self._host,
             port=self._port,
             max_queued_incoming_messages=self._max_queue_size,
         ) as client:
+            connected_at = perf_counter()
+
             logger.info(
                 "PSK Reporter MQTT connected",
                 extra={
@@ -88,6 +94,10 @@ class PSKReporterProvider:
                     "operation": "connect",
                     "host": self._host,
                     "port": self._port,
+                    "duration_ms": round(
+                        (connected_at - started_at) * 1000,
+                        2,
+                    ),
                 },
             )
 
@@ -102,21 +112,68 @@ class PSKReporterProvider:
                 },
             )
 
-            async for message in client.messages:
-                try:
-                    spot = self._parse_message(bytes(message.payload))
-                    yield self._to_observation(spot)
+            try:
+                async for message in client.messages:
+                    try:
+                        spot = self._parse_message(
+                            bytes(message.payload),
+                        )
 
-                except PSKReporterError as exc:
-                    logger.warning(
-                        "PSK Reporter message rejected",
-                        extra={
-                            "provider": self.name,
-                            "operation": "message_validation",
-                            "topic": str(message.topic),
-                            "error": str(exc),
-                        },
-                    )
+                        record_count += 1
+
+                        yield self._to_observation(spot)
+
+                    except PSKReporterError as exc:
+                        logger.warning(
+                            "PSK Reporter message rejected",
+                            extra={
+                                "provider": self.name,
+                                "operation": "message_validation",
+                                "topic": str(message.topic),
+                                "error": str(exc),
+                            },
+                        )
+
+            finally:
+                logger.info(
+                    "PSK Reporter MQTT session ended",
+                    extra={
+                        "provider": self.name,
+                        "operation": "stream",
+                        "duration_ms": round(
+                            (perf_counter() - connected_at) * 1000,
+                            2,
+                        ),
+                        "record_count": record_count,
+                    },
+                )
+
+                await client.subscribe(self._topic)
+
+                logger.info(
+                    "PSK Reporter MQTT subscribed",
+                    extra={
+                        "provider": self.name,
+                        "operation": "subscribe",
+                        "topic": self._topic,
+                    },
+                )
+
+                async for message in client.messages:
+                    try:
+                        spot = self._parse_message(bytes(message.payload))
+                        yield self._to_observation(spot)
+
+                    except PSKReporterError as exc:
+                        logger.warning(
+                            "PSK Reporter message rejected",
+                            extra={
+                                "provider": self.name,
+                                "operation": "message_validation",
+                                "topic": str(message.topic),
+                                "error": str(exc),
+                            },
+                        )
 
     async def stream(
         self,
@@ -127,6 +184,13 @@ class PSKReporterProvider:
                     yield observation
 
             except asyncio.CancelledError:
+                logger.info(
+                    "PSK Reporter stream cancelled",
+                    extra={
+                        "provider": self.name,
+                        "operation": "stream",
+                    },
+                )
                 raise
 
             except aiomqtt.MqttError as exc:
