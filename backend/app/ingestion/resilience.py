@@ -4,6 +4,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
+from app.health import (
+    noaa_health,
+    psk_reporter_health,
+)
+
 
 @dataclass(frozen=True)
 class DeadLetter:
@@ -142,9 +147,21 @@ async def run_resilient_job[T](
             error=exc,
         )
 
+        if provider == "noaa":
+            noaa_health.record_failure(exc)
+
+        elif provider == "psk_reporter":
+            psk_reporter_health.record_failure(exc)
+
         return None
 
     circuit_breaker.record_success()
+
+    if provider == "noaa":
+        noaa_health.record_success()
+
+    elif provider == "psk_reporter":
+        psk_reporter_health.record_success()
 
     return result
 

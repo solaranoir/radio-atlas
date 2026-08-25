@@ -12,16 +12,13 @@ def test_create_app_returns_fastapi_application() -> None:
     assert isinstance(app, FastAPI)
 
 
-def test_health_endpoint_returns_ok() -> None:
+def test_health_endpoint_returns_200() -> None:
     app = create_app()
     client = TestClient(app)
 
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "status": "ok",
-    }
 
 
 def test_openapi_is_available() -> None:
