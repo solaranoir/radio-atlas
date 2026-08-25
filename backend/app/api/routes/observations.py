@@ -70,12 +70,50 @@ class ObservationResponse(BaseModel):
     responses={
         400: {
             "description": "Invalid time range",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "error": {
+                            "code": "invalid_time_range",
+                            "message": ("start_time must be before or equal to end_time"),
+                            "details": None,
+                        }
+                    }
+                }
+            },
         },
         422: {
             "description": "Request validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "error": {
+                            "code": "validation_error",
+                            "message": "Request validation failed",
+                            "details": [
+                                {
+                                    "type": "greater_than_equal",
+                                    "loc": ["query", "limit"],
+                                    "msg": ("Input should be greater than or equal to 1"),
+                                }
+                            ],
+                        }
+                    }
+                }
+            },
         },
         500: {
             "description": "Response validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "error": {
+                            "code": "response_validation_error",
+                            "message": "Response validation failed",
+                        }
+                    }
+                }
+            },
         },
     },
 )
@@ -84,24 +122,61 @@ def get_observations(
         Session,
         Depends(get_db),
     ],
-    start_time: datetime | None = None,
-    end_time: datetime | None = None,
-    band: str | None = None,
-    limit: int = Query(
-        default=100,
-        ge=1,
-        le=500,
-    ),
-    offset: int = Query(
-        default=0,
-        ge=0,
-    ),
+    start_time: Annotated[
+        datetime | None,
+        Query(
+            description=(
+                "Return observations recorded at or after this UTC timestamp. Use ISO 8601 format."
+            ),
+            examples=["2026-08-20T00:00:00Z"],
+        ),
+    ] = None,
+    end_time: Annotated[
+        datetime | None,
+        Query(
+            description=(
+                "Return observations recorded at or before this UTC timestamp. Use ISO 8601 format."
+            ),
+            examples=["2026-08-21T00:00:00Z"],
+        ),
+    ] = None,
+    band: Annotated[
+        str | None,
+        Query(
+            description=(
+                "Filter observations by amateur-radio band. "
+                "Band values use standard labels such as 20m, 40m, or 10m."
+            ),
+            examples=["20m"],
+        ),
+    ] = None,
+    limit: Annotated[
+        int,
+        Query(
+            ge=1,
+            le=500,
+            description=("Maximum number of observations to return. Must be between 1 and 500."),
+            examples=[100],
+        ),
+    ] = 100,
+    offset: Annotated[
+        int,
+        Query(
+            ge=0,
+            description=(
+                "Number of observations to skip before returning results. "
+                "Use with limit for pagination."
+            ),
+            examples=[0],
+        ),
+    ] = 0,
 ) -> list[Spot]:
     validate_time_range(
         start_time,
         end_time,
     )
-    observations = list_observations(
+
+    return list_observations(
         session,
         start_time=start_time,
         end_time=end_time,
@@ -109,5 +184,3 @@ def get_observations(
         limit=limit,
         offset=offset,
     )
-
-    return observations
