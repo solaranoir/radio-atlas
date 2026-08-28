@@ -1,6 +1,8 @@
 import * as THREE from "three";
 
+import { createAtmosphere } from "./createAtmosphere";
 import { createCamera } from "./createCamera";
+import { createEarth } from "./createEarth";
 import { createLighting } from "./createLighting";
 import { createRenderer } from "./createRenderer";
 
@@ -22,6 +24,12 @@ export class GlobeRenderingContext {
     for (const light of lights) {
       this.scene.add(light);
     }
+
+    const earth = createEarth();
+    const atmosphere = createAtmosphere();
+
+    this.scene.add(earth);
+    this.scene.add(atmosphere);
   } 
 
   mount(container: HTMLElement): void {
