@@ -5,6 +5,8 @@ import { createCamera } from "./createCamera";
 import { createEarth } from "./createEarth";
 import { createLighting } from "./createLighting";
 import { createRenderer } from "./createRenderer";
+import { createStationMarker } from "./createStationMarker";
+
 
 export class GlobeRenderingContext {
   private readonly scene: THREE.Scene;
@@ -30,6 +32,31 @@ export class GlobeRenderingContext {
 
     this.scene.add(earth);
     this.scene.add(atmosphere);
+
+    const stations = [
+      {
+        id: "las-vegas",
+        callsign: "LAS-VEGAS",
+        latitude: 36.1699,
+        longitude: -115.1398,
+      },
+      {
+        id: "new-york",
+        callsign: "NEW-YORK",
+        latitude: 40.7128,
+        longitude: -74.006,
+      },
+      {
+        id: "quito",
+        callsign: "QUITO",
+        latitude: -0.1807,
+        longitude: -78.4678,
+      },
+    ];
+
+    for (const station of stations) {
+      this.scene.add(createStationMarker(station));
+    }
   } 
 
   resize(width: number, height: number): void {
