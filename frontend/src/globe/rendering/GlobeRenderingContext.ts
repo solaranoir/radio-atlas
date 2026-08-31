@@ -6,12 +6,15 @@ import { createEarth } from "./createEarth";
 import { createLighting } from "./createLighting";
 import { createRenderer } from "./createRenderer";
 import { createStationMarker } from "./createStationMarker";
+import { SignalArcCollection } from "./SignalArcCollection";
 
 
 export class GlobeRenderingContext {
   private readonly scene: THREE.Scene;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly renderer: THREE.WebGLRenderer;
+  private readonly signalArcs =
+    new SignalArcCollection();
 
   private animationFrameId: number | null = null;
   private container: HTMLElement | null = null;
@@ -32,6 +35,43 @@ export class GlobeRenderingContext {
 
     this.scene.add(earth);
     this.scene.add(atmosphere);
+    this.scene.add(this.signalArcs.group);
+
+    this.signalArcs.setPaths([
+      {
+        id: "las-vegas-new-york",
+        source: {
+          latitude: 36.1699,
+          longitude: -115.1398,
+        },
+        target: {
+          latitude: 40.7128,
+          longitude: -74.006,
+        },
+      },
+      {
+        id: "new-york-london",
+        source: {
+          latitude: 40.7128,
+          longitude: -74.006,
+        },
+        target: {
+          latitude: 51.5074,
+          longitude: -0.1278,
+        },
+      },
+      {
+        id: "quito-las-vegas",
+        source: {
+          latitude: -0.1807,
+          longitude: -78.4678,
+        },
+        target: {
+          latitude: 36.1699,
+          longitude: -115.1398,
+        },
+      },
+    ]);
 
     const stations = [
       {
@@ -111,7 +151,7 @@ export class GlobeRenderingContext {
     ) {
       this.container.removeChild(this.renderer.domElement);
     }
-
+    this.signalArcs.dispose();
     this.renderer.dispose();
     this.container = null;
   }
