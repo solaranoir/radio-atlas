@@ -32,6 +32,17 @@ export class GlobeRenderingContext {
     this.scene.add(atmosphere);
   } 
 
+  resize(width: number, height: number): void {
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+
+    this.renderer.setSize(width, height);
+
+    this.camera.aspect = width / height;
+    this.camera.updateProjectionMatrix();
+  }
+
   mount(container: HTMLElement): void {
     if (this.container !== null) {
       return;
@@ -39,7 +50,13 @@ export class GlobeRenderingContext {
 
     this.container = container;
     this.container.appendChild(this.renderer.domElement);
+
+    const { width, height } = container.getBoundingClientRect();
+
+    this.resize(width, height);
   }
+
+
 
   start(): void {
     if (this.animationFrameId !== null) {
