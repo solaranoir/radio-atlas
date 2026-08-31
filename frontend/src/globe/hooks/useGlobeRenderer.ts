@@ -6,18 +6,26 @@ export function useGlobeRenderer(
   containerRef: RefObject<HTMLDivElement | null>,
 ): void {
   useEffect(() => {
-    const container = containerRef.current;
-
-    if (container === null) {
+    if (containerRef.current === null) {
       return;
     }
 
+    const container: HTMLDivElement = containerRef.current;
     const renderingContext = new GlobeRenderingContext();
 
     renderingContext.mount(container);
     renderingContext.start();
 
+    const resizeObserver = new ResizeObserver(() => {
+      const { width, height } = container.getBoundingClientRect();
+
+      renderingContext.resize(width, height);
+    });
+
+    resizeObserver.observe(container);
+
     return () => {
+      resizeObserver.disconnect();
       renderingContext.dispose();
     };
   }, [containerRef]);
