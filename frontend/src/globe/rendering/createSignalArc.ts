@@ -2,6 +2,7 @@ import * as THREE from "three";
 
 import type { SignalPath } from "../types/signalPath";
 import { generateGreatCirclePath } from "../utilities/greatCirclePath";
+import { mapPropagationIntensity } from "../utilities/propagationIntensity";
 import { EARTH_RADIUS } from "./createEarth";
 
 const DEFAULT_SEGMENTS = 64;
@@ -16,10 +17,15 @@ export function createSignalArc(
 > {
   const geometry = createSignalArcGeometry(signalPath);
 
+  const intensity =
+    mapPropagationIntensity(
+      signalPath.strength,
+    );
+
   const material = new THREE.LineBasicMaterial({
     color: 0x66ccff,
     transparent: true,
-    opacity: 0.9,
+    opacity: intensity.opacity,
   });
 
   const arc = new THREE.Line(
@@ -28,6 +34,8 @@ export function createSignalArc(
   );
 
   arc.userData.signalPath = signalPath;
+  arc.userData.targetOpacity =
+  intensity.opacity;
 
   return arc;
 }
@@ -82,7 +90,16 @@ export function updateSignalArc(
   arc.geometry =
     createSignalArcGeometry(signalPath);
 
-  arc.userData.signalPath = signalPath;
+  const intensity =
+    mapPropagationIntensity(
+      signalPath.strength,
+    );
+
+  arc.userData.signalPath =
+    signalPath;
+
+  arc.userData.targetOpacity =
+    intensity.opacity;
 
   previousGeometry.dispose();
 }

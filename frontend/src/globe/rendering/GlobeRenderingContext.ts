@@ -13,6 +13,7 @@ export class GlobeRenderingContext {
   private readonly scene: THREE.Scene;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly renderer: THREE.WebGLRenderer;
+  private readonly clock = new THREE.Clock();
   private readonly signalArcs =
     new SignalArcCollection();
 
@@ -48,6 +49,7 @@ export class GlobeRenderingContext {
           latitude: 40.7128,
           longitude: -74.006,
         },
+        strength: 0.2,
       },
       {
         id: "new-york-london",
@@ -59,6 +61,7 @@ export class GlobeRenderingContext {
           latitude: 51.5074,
           longitude: -0.1278,
         },
+       strength: 1,
       },
       {
         id: "quito-las-vegas",
@@ -70,6 +73,7 @@ export class GlobeRenderingContext {
           latitude: 36.1699,
           longitude: -115.1398,
         },
+       strength: 0.6,
       },
     ]);
 
@@ -127,6 +131,7 @@ export class GlobeRenderingContext {
 
   start(): void {
     if (this.animationFrameId !== null) {
+      this.clock.start();
       return;
     }
 
@@ -143,6 +148,7 @@ export class GlobeRenderingContext {
   }
 
   dispose(): void {
+    this.clock.stop();
     this.stop();
 
     if (
@@ -157,6 +163,11 @@ export class GlobeRenderingContext {
   }
 
   private render = (): void => {
+    const deltaSeconds = this.clock.getDelta();
+
+    this.signalArcs.update(
+      deltaSeconds,
+    );
     this.renderer.render(this.scene, this.camera);
 
     this.animationFrameId = window.requestAnimationFrame(this.render);
