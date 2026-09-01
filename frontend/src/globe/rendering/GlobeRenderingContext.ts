@@ -7,6 +7,7 @@ import { createLighting } from "./createLighting";
 import { createRenderer } from "./createRenderer";
 import { createStationMarker } from "./createStationMarker";
 import { SignalArcCollection } from "./SignalArcCollection";
+import { SolarTerminatorLayer } from "./SolarTerminatorLayer";
 import { SpotDensityLayer } from "./SpotDensityLayer";
 import { calculateSpotDensity } from "../utilities/spotDensity";
 
@@ -15,30 +16,55 @@ export class GlobeRenderingContext {
   private readonly camera: THREE.PerspectiveCamera;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly clock = new THREE.Clock();
+  private readonly directionalLight:
+    THREE.DirectionalLight;
+
   private readonly signalArcs =
     new SignalArcCollection();
   private readonly spotDensity =
     new SpotDensityLayer();
+  private readonly solarTerminator =
+    new SolarTerminatorLayer();
 
+  private solarUpdateAccumulator = 0;
   private animationFrameId: number | null = null;
   private container: HTMLElement | null = null;
+
+  private updateSolarLighting(): void {
+    const sunDirection =
+      this.solarTerminator
+        .getSunDirection();
+
+    this.directionalLight.position
+      .copy(sunDirection)
+      .multiplyScalar(5);
+  }
 
   constructor() {
     this.scene = new THREE.Scene();
     this.camera = createCamera();
     this.renderer = createRenderer();
 
-    const lights = createLighting();
+    const lighting = createLighting();
+    this.directionalLight =
+      lighting.directionalLight;
 
-    for (const light of lights) {
-      this.scene.add(light);
-    }
+    this.scene.add(
+      lighting.ambientLight,
+      lighting.directionalLight,
+    );
 
     const earth = createEarth();
     const atmosphere = createAtmosphere();
 
     this.scene.add(earth);
     this.scene.add(atmosphere);
+    this.scene.add(
+      this.solarTerminator.group,
+    );
+
+    this.updateSolarLighting();
+
     this.scene.add(this.signalArcs.group);
     this.scene.add(this.spotDensity.group);
 
@@ -202,6 +228,7 @@ export class GlobeRenderingContext {
     }
     this.signalArcs.dispose();
     this.spotDensity.dispose();
+    this.solarTerminator.dispose();
     this.renderer.dispose();
     this.container = null;
   }
@@ -216,6 +243,20 @@ export class GlobeRenderingContext {
     this.spotDensity.update(
       deltaSeconds,
     );
+
+    this.solarUpdateAccumulator +=
+      deltaSeconds;
+
+    if (
+      this.solarUpdateAccumulator >= 60
+    ) {
+     this.solarTerminator.update(
+        new Date(),
+      );
+
+      this.updateSolarLighting();
+      this.solarUpdateAccumulator = 0;
+    }
 
     this.renderer.render(this.scene, this.camera);
 

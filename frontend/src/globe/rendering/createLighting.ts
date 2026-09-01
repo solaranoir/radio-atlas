@@ -1,14 +1,25 @@
 import * as THREE from "three";
 
-export function createLighting(): THREE.Light[] {
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+export interface GlobeLighting {
+  ambientLight: THREE.AmbientLight;
+  directionalLight: THREE.DirectionalLight;
+}
 
-  const directionalLight = new THREE.DirectionalLight(
-    0xffffff,
-    1.5,
-  );
+export function createLighting(): GlobeLighting {
+  const ambientLight =
+    new THREE.AmbientLight(
+      0xffffff,
+      1,
+    );
 
-  directionalLight.position.set(5, 3, 5);
+  const directionalLight =
+    new THREE.DirectionalLight(
+      0xffffff,
+      1.5,
+    );
 
-  return [ambientLight, directionalLight];
+  return {
+    ambientLight,
+    directionalLight,
+  };
 }
