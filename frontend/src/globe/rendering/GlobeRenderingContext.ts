@@ -6,12 +6,16 @@ import { createEarth } from "./createEarth";
 import { createLighting } from "./createLighting";
 import { createRenderer } from "./createRenderer";
 import { createStationMarker } from "./createStationMarker";
+import { PredictionPathLayer } from "./PredictionPathLayer";
 import { SignalArcCollection } from "./SignalArcCollection";
 import { SolarTerminatorLayer } from "./SolarTerminatorLayer";
 import { SpotDensityLayer } from "./SpotDensityLayer";
 import { SolarWeatherLayer } from "./SolarWeatherLayer";
 import { calculateSpotDensity } from "../utilities/spotDensity";
 import type { SolarWeatherSnapshot } from "../types/solarWeather";
+import type {
+  PredictionPath,
+} from "../types/predictionPath";
 
 export class GlobeRenderingContext {
   private readonly scene: THREE.Scene;
@@ -29,6 +33,8 @@ export class GlobeRenderingContext {
     new SolarTerminatorLayer();
   private readonly solarWeather =
     new SolarWeatherLayer();
+  private readonly predictionPaths =
+    new PredictionPathLayer();
 
   private solarUpdateAccumulator = 0;
   private animationFrameId: number | null = null;
@@ -68,6 +74,9 @@ export class GlobeRenderingContext {
     );
     this.scene.add(
       this.solarWeather.group,
+    );
+    this.scene.add(
+      this.predictionPaths.group,
     );
 
     this.updateSolarLighting();
@@ -113,7 +122,7 @@ export class GlobeRenderingContext {
        strength: 0.6,
       },
     ]); 
-    
+
     const densityObservations = [
       {
         id: "vegas-1",
@@ -179,6 +188,14 @@ export class GlobeRenderingContext {
         createStationMarker(station),
       );
     }
+  }
+
+  setPredictionPaths(
+    predictions: PredictionPath[],
+  ): void {
+    this.predictionPaths.setPaths(
+      predictions,
+    );
   }
 
   setSolarWeatherSnapshot(
@@ -247,6 +264,7 @@ export class GlobeRenderingContext {
     this.spotDensity.dispose();
     this.solarTerminator.dispose();
     this.solarWeather.dispose();
+    this.predictionPaths.dispose();
     this.renderer.dispose();
     this.container = null;
   }
