@@ -7,7 +7,8 @@ import { createLighting } from "./createLighting";
 import { createRenderer } from "./createRenderer";
 import { createStationMarker } from "./createStationMarker";
 import { SignalArcCollection } from "./SignalArcCollection";
-
+import { SpotDensityLayer } from "./SpotDensityLayer";
+import { calculateSpotDensity } from "../utilities/spotDensity";
 
 export class GlobeRenderingContext {
   private readonly scene: THREE.Scene;
@@ -16,6 +17,8 @@ export class GlobeRenderingContext {
   private readonly clock = new THREE.Clock();
   private readonly signalArcs =
     new SignalArcCollection();
+  private readonly spotDensity =
+    new SpotDensityLayer();
 
   private animationFrameId: number | null = null;
   private container: HTMLElement | null = null;
@@ -37,6 +40,7 @@ export class GlobeRenderingContext {
     this.scene.add(earth);
     this.scene.add(atmosphere);
     this.scene.add(this.signalArcs.group);
+    this.scene.add(this.spotDensity.group);
 
     this.signalArcs.setPaths([
       {
@@ -76,6 +80,45 @@ export class GlobeRenderingContext {
        strength: 0.6,
       },
     ]);
+
+  const densityObservations = [
+    {
+      id: "vegas-1",
+      latitude: 36.1699,
+      longitude: -115.1398,
+    },
+    {
+      id: "vegas-2",
+      latitude: 36.2,
+      longitude: -115.2,
+    },
+    {
+      id: "vegas-3",
+      latitude: 37.1,
+      longitude: -116.1,
+    },
+    {
+      id: "new-york-1",
+      latitude: 40.7128,
+      longitude: -74.006,
+    },
+    {
+      id: "london-1",
+      latitude: 51.5074,
+      longitude: -0.1278,
+    },
+    {
+      id: "london-2",
+      latitude: 52.1,
+      longitude: -1.2,
+    },
+  ];
+
+  this.spotDensity.setRegions(
+    calculateSpotDensity(
+      densityObservations,
+    ),
+  );
 
     const stations = [
       {
@@ -158,6 +201,7 @@ export class GlobeRenderingContext {
       this.container.removeChild(this.renderer.domElement);
     }
     this.signalArcs.dispose();
+    this.spotDensity.dispose();
     this.renderer.dispose();
     this.container = null;
   }
@@ -168,6 +212,11 @@ export class GlobeRenderingContext {
     this.signalArcs.update(
       deltaSeconds,
     );
+
+    this.spotDensity.update(
+      deltaSeconds,
+    );
+
     this.renderer.render(this.scene, this.camera);
 
     this.animationFrameId = window.requestAnimationFrame(this.render);
