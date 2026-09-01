@@ -9,7 +9,9 @@ import { createStationMarker } from "./createStationMarker";
 import { SignalArcCollection } from "./SignalArcCollection";
 import { SolarTerminatorLayer } from "./SolarTerminatorLayer";
 import { SpotDensityLayer } from "./SpotDensityLayer";
+import { SolarWeatherLayer } from "./SolarWeatherLayer";
 import { calculateSpotDensity } from "../utilities/spotDensity";
+import type { SolarWeatherSnapshot } from "../types/solarWeather";
 
 export class GlobeRenderingContext {
   private readonly scene: THREE.Scene;
@@ -25,6 +27,8 @@ export class GlobeRenderingContext {
     new SpotDensityLayer();
   private readonly solarTerminator =
     new SolarTerminatorLayer();
+  private readonly solarWeather =
+    new SolarWeatherLayer();
 
   private solarUpdateAccumulator = 0;
   private animationFrameId: number | null = null;
@@ -61,6 +65,9 @@ export class GlobeRenderingContext {
     this.scene.add(atmosphere);
     this.scene.add(
       this.solarTerminator.group,
+    );
+    this.scene.add(
+      this.solarWeather.group,
     );
 
     this.updateSolarLighting();
@@ -105,46 +112,46 @@ export class GlobeRenderingContext {
         },
        strength: 0.6,
       },
-    ]);
+    ]); 
+    
+    const densityObservations = [
+      {
+        id: "vegas-1",
+        latitude: 36.1699,
+        longitude: -115.1398,
+      },
+      {
+        id: "vegas-2",
+        latitude: 36.2,
+        longitude: -115.2,
+      },
+      {
+        id: "vegas-3",
+        latitude: 37.1,
+        longitude: -116.1,
+      },
+      {
+        id: "new-york-1",
+        latitude: 40.7128,
+        longitude: -74.006,
+      },
+      {
+        id: "london-1",
+        latitude: 51.5074,
+        longitude: -0.1278,
+      },
+      {
+        id: "london-2",
+        latitude: 52.1,
+        longitude: -1.2,
+      },
+    ];
 
-  const densityObservations = [
-    {
-      id: "vegas-1",
-      latitude: 36.1699,
-      longitude: -115.1398,
-    },
-    {
-      id: "vegas-2",
-      latitude: 36.2,
-      longitude: -115.2,
-    },
-    {
-      id: "vegas-3",
-      latitude: 37.1,
-      longitude: -116.1,
-    },
-    {
-      id: "new-york-1",
-      latitude: 40.7128,
-      longitude: -74.006,
-    },
-    {
-      id: "london-1",
-      latitude: 51.5074,
-      longitude: -0.1278,
-    },
-    {
-      id: "london-2",
-      latitude: 52.1,
-      longitude: -1.2,
-    },
-  ];
-
-  this.spotDensity.setRegions(
-    calculateSpotDensity(
-      densityObservations,
-    ),
-  );
+    this.spotDensity.setRegions(
+      calculateSpotDensity(
+        densityObservations,
+      ),
+    );
 
     const stations = [
       {
@@ -168,9 +175,19 @@ export class GlobeRenderingContext {
     ];
 
     for (const station of stations) {
-      this.scene.add(createStationMarker(station));
+      this.scene.add(
+        createStationMarker(station),
+      );
     }
-  } 
+  }
+
+  setSolarWeatherSnapshot(
+    snapshot: SolarWeatherSnapshot,
+  ): void {
+    this.solarWeather.setSnapshot(
+      snapshot,
+    );
+  }
 
   resize(width: number, height: number): void {
     if (width <= 0 || height <= 0) {
@@ -229,6 +246,7 @@ export class GlobeRenderingContext {
     this.signalArcs.dispose();
     this.spotDensity.dispose();
     this.solarTerminator.dispose();
+    this.solarWeather.dispose();
     this.renderer.dispose();
     this.container = null;
   }
