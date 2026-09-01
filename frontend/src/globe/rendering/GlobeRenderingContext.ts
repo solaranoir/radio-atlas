@@ -13,6 +13,7 @@ export class GlobeRenderingContext {
   private readonly scene: THREE.Scene;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly renderer: THREE.WebGLRenderer;
+  private readonly clock = new THREE.Clock();
   private readonly signalArcs =
     new SignalArcCollection();
 
@@ -130,6 +131,7 @@ export class GlobeRenderingContext {
 
   start(): void {
     if (this.animationFrameId !== null) {
+      this.clock.start();
       return;
     }
 
@@ -146,6 +148,7 @@ export class GlobeRenderingContext {
   }
 
   dispose(): void {
+    this.clock.stop();
     this.stop();
 
     if (
@@ -160,6 +163,11 @@ export class GlobeRenderingContext {
   }
 
   private render = (): void => {
+    const deltaSeconds = this.clock.getDelta();
+
+    this.signalArcs.update(
+      deltaSeconds,
+    );
     this.renderer.render(this.scene, this.camera);
 
     this.animationFrameId = window.requestAnimationFrame(this.render);

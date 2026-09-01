@@ -149,7 +149,7 @@ describe("updateSignalArc", () => {
     );
 
     expect(
-      arc.material.opacity,
+      arc.userData.targetOpacity,
     ).toBeGreaterThan(
       initialOpacity,
     );

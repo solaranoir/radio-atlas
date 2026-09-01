@@ -1,3 +1,4 @@
+import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 
 import type { SignalPath } from "../types/signalPath";
@@ -104,4 +105,120 @@ describe("SignalArcCollection", () => {
 
     expect(collection.group.children).toHaveLength(0);
   });
+
+  it("does not immediately snap to updated opacity", () => {
+    const collection =
+      new SignalArcCollection();
+
+    const weakPath: SignalPath = {
+      ...pathOne,
+      strength: 0,
+    };
+
+    collection.setPaths([
+      weakPath,
+    ]);
+
+    const arc =
+      collection.group.children[0] as THREE.Line<
+        THREE.BufferGeometry,
+        THREE.LineBasicMaterial
+      >;
+
+    const initialOpacity =
+      arc.material.opacity;
+
+    collection.setPaths([
+      {
+        ...weakPath,
+        strength: 1,
+      },
+    ]);
+
+    expect(
+      arc.material.opacity,
+    ).toBe(initialOpacity);
+
+    collection.dispose();
+  });
+
+  it("animates opacity toward the target strength", () => {
+    const collection =
+      new SignalArcCollection();
+
+    const weakPath: SignalPath = {
+      ...pathOne,
+      strength: 0,
+    };
+
+    collection.setPaths([
+      weakPath,
+    ]);
+
+    const arc =
+      collection.group.children[0] as THREE.Line<
+        THREE.BufferGeometry,
+        THREE.LineBasicMaterial
+      >;
+
+    const initialOpacity =
+      arc.material.opacity;
+
+    collection.setPaths([
+      {
+        ...weakPath,
+        strength: 1,
+      },
+    ]);
+
+    collection.update(0.1);
+
+    expect(
+      arc.material.opacity,
+    ).toBeGreaterThan(
+      initialOpacity,
+    );
+
+    expect(
+      arc.material.opacity,
+    ).toBeLessThan(1);
+
+    collection.dispose();
+  });
+
+  it("reaches the target opacity after sufficient updates", () => {
+    const collection =
+      new SignalArcCollection();
+
+    const weakPath: SignalPath = {
+      ...pathOne,
+      strength: 0,
+    };
+
+    collection.setPaths([
+      weakPath,
+    ]);
+
+    const arc =
+      collection.group.children[0] as THREE.Line<
+        THREE.BufferGeometry,
+        THREE.LineBasicMaterial
+      >;
+
+    collection.setPaths([
+      {
+        ...weakPath,
+        strength: 1,
+      },
+    ]);
+  
+    collection.update(1);
+
+    expect(
+      arc.material.opacity,
+    ).toBeCloseTo(1);
+
+    collection.dispose();
+  });
+
 });

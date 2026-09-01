@@ -6,6 +6,8 @@ import {
   updateSignalArc,
 } from "./createSignalArc";
 
+const OPACITY_CHANGE_RATE = 1.5;
+
 type SignalArc = ReturnType<
   typeof createSignalArc
 >;
@@ -48,6 +50,44 @@ export class SignalArcCollection {
       arc.material.dispose();
 
       this.arcs.delete(id);
+    }
+  }
+
+  update(deltaSeconds: number): void {
+    for (const arc of this.arcs.values()) {
+      const targetOpacity =
+        arc.userData.targetOpacity as number | undefined;
+
+      if (targetOpacity === undefined) {
+        continue;
+      }
+
+      const currentOpacity =
+        arc.material.opacity;
+
+      const difference =
+        targetOpacity - currentOpacity;
+
+      if (Math.abs(difference) < 0.001) {
+        arc.material.opacity =
+          targetOpacity;
+
+        continue;
+      }
+
+      const maximumChange =
+        OPACITY_CHANGE_RATE *
+        deltaSeconds;
+
+      const change =
+        Math.sign(difference) *
+        Math.min(
+          Math.abs(difference),
+          maximumChange,
+        );
+
+      arc.material.opacity +=
+        change;
     }
   }
 

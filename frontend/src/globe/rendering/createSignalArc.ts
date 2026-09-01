@@ -34,6 +34,8 @@ export function createSignalArc(
   );
 
   arc.userData.signalPath = signalPath;
+  arc.userData.targetOpacity =
+  intensity.opacity;
 
   return arc;
 }
@@ -93,11 +95,11 @@ export function updateSignalArc(
       signalPath.strength,
     );
 
-  arc.material.opacity =
-    intensity.opacity;
-
   arc.userData.signalPath =
     signalPath;
+
+  arc.userData.targetOpacity =
+    intensity.opacity;
 
   previousGeometry.dispose();
 }
