@@ -1,17 +1,30 @@
-import { useRef } from "react";
+import {
+  useRef,
+} from "react";
 
 import { useGlobeRenderer } from "../hooks/useGlobeRenderer";
+import { useSolarWeather } from "../hooks/useSolarWeather";
 
 export function GlobeRenderer() {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef =
+    useRef<HTMLDivElement | null>(
+      null,
+    );
 
-  useGlobeRenderer(containerRef);
+  const {
+    snapshot: solarWeather,
+  } = useSolarWeather();
+
+  useGlobeRenderer(
+    containerRef,
+    solarWeather,
+  );
 
   return (
     <div
       ref={containerRef}
       style={{
-        width: "100vw",
+        width: "100%",
         height: "100vh",
         overflow: "hidden",
       }}

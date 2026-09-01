@@ -9,6 +9,7 @@ from fastapi.exceptions import (
     RequestValidationError,
     ResponseValidationError,
 )
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.errors import (
     APIError,
@@ -74,6 +75,15 @@ def create_app() -> FastAPI:
         response_validation_error_handler,
     )
 
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:5173",
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     return app
 
 
