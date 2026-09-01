@@ -13,6 +13,7 @@ const pathOne: SignalPath = {
     latitude: 40.7128,
     longitude: -74.006,
   },
+  strength: 0.25,
 };
 
 const pathTwo: SignalPath = {
@@ -25,6 +26,7 @@ const pathTwo: SignalPath = {
     latitude: 51.5074,
     longitude: -0.1278,
   },
+  strength: 0.9,
 };
 
 describe("SignalArcCollection", () => {

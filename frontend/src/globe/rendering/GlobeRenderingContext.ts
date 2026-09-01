@@ -48,6 +48,7 @@ export class GlobeRenderingContext {
           latitude: 40.7128,
           longitude: -74.006,
         },
+        strength: 0.2,
       },
       {
         id: "new-york-london",
@@ -59,6 +60,7 @@ export class GlobeRenderingContext {
           latitude: 51.5074,
           longitude: -0.1278,
         },
+       strength: 1,
       },
       {
         id: "quito-las-vegas",
@@ -70,6 +72,7 @@ export class GlobeRenderingContext {
           latitude: 36.1699,
           longitude: -115.1398,
         },
+       strength: 0.6,
       },
     ]);
 

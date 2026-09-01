@@ -4,4 +4,5 @@ export interface SignalPath {
   id: string;
   source: GeographicCoordinates;
   target: GeographicCoordinates;
+  strength: number;
 }

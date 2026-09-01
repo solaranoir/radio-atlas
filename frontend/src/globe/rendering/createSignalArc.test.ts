@@ -18,6 +18,7 @@ const signalPath: SignalPath = {
     latitude: 40.7128,
     longitude: -74.006,
   },
+  strength: 0.5,
 };
 
 describe("createSignalArcGeometry", () => {
@@ -97,6 +98,61 @@ describe("updateSignalArc", () => {
     expect(
       arc.userData.signalPath,
     ).toEqual(updatedPath);
+
+    arc.geometry.dispose();
+    arc.material.dispose();
+  });
+
+  it("maps propagation strength to arc opacity", () => {
+    const weakArc = createSignalArc({
+      ...signalPath,
+      strength: 0,
+    });
+
+    const strongArc = createSignalArc({
+      ...signalPath,
+      strength: 1,
+    });
+
+    expect(
+      weakArc.material.opacity,
+    ).toBeLessThan(
+      strongArc.material.opacity,
+    );
+
+    expect(
+      strongArc.material.opacity,
+    ).toBeCloseTo(1);
+
+    weakArc.geometry.dispose();
+    weakArc.material.dispose();
+
+    strongArc.geometry.dispose();
+    strongArc.material.dispose();
+  });
+
+  it("updates arc opacity when propagation strength changes", () => {
+    const arc = createSignalArc({
+      ...signalPath,
+      strength: 0.1,
+    });
+
+    const initialOpacity =
+      arc.material.opacity;
+
+    updateSignalArc(
+      arc,
+      {
+        ...signalPath,
+        strength: 0.9,
+      },
+    );
+
+    expect(
+      arc.material.opacity,
+    ).toBeGreaterThan(
+      initialOpacity,
+    );
 
     arc.geometry.dispose();
     arc.material.dispose();
