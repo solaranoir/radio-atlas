@@ -6,7 +6,13 @@ export interface PointerCoordinates {
 }
 
 export function createRaycaster(): THREE.Raycaster {
-  return new THREE.Raycaster();
+  const raycaster =
+    new THREE.Raycaster();
+
+  raycaster.params.Line.threshold =
+    0.02;
+
+  return raycaster;
 }
 
 export function pointerToNormalizedDeviceCoordinates(

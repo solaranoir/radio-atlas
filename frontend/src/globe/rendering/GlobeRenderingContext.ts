@@ -23,6 +23,9 @@ import {
   createRaycaster,
   pointerToNormalizedDeviceCoordinates,
 } from "../interactions/createRaycaster";
+import {
+  isClickGesture,
+} from "../interactions/isClickGesture";
 import type { Anomaly } from "../types/anomaly";
 import type { SolarWeatherSnapshot } from "../types/solarWeather";
 import type {
@@ -30,13 +33,29 @@ import type {
 } from "../types/predictionPath";
 import { calculateSpotDensity } from "../utilities/spotDensity";
 
+function hasMaterial(
+  object: THREE.Object3D,
+): object is THREE.Object3D & {
+  material: THREE.Material;
+} {
+  return (
+    "material" in object &&
+    object.material instanceof
+      THREE.Material
+  );
+}
+
 export class GlobeRenderingContext {
+  private pointerDownPosition:
+    THREE.Vector2 | null = null;
   private readonly scene: THREE.Scene;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly clock = new THREE.Clock();
   private readonly directionalLight:
     THREE.DirectionalLight;
+  private selectedObject:
+    THREE.Object3D | null = null;
 
   private readonly anomalies =
     new AnomalyLayer();
@@ -54,13 +73,190 @@ export class GlobeRenderingContext {
     new SolarTerminatorLayer();
   private readonly solarWeather =
     new SolarWeatherLayer();
+  private static readonly CLICK_DRAG_THRESHOLD = 5;
 
   private solarUpdateAccumulator = 0;
   private animationFrameId: number | null = null;
   private container: HTMLElement | null = null;
+
+  private clearSelection(): void {
+    if (
+      this.selectedObject === null
+    ) {
+      return;
+    }
+
+    const object =
+      this.selectedObject;
+
+    if (
+      object.userData
+        .originalScale
+    ) {
+      object.scale.copy(
+        object.userData
+          .originalScale,
+      );
+    }
+
+    if (
+      object instanceof THREE.Line &&
+      object.material instanceof
+        THREE.LineBasicMaterial
+    ) {
+      const originalColor =
+        object.userData.originalColor;
+
+      if (
+        originalColor instanceof
+        THREE.Color
+      ) {
+        object.material.color.copy(
+          originalColor,
+        );
+      }
+    }
+
+    if (hasMaterial(object)) {
+      const originalOpacity =
+        object.userData
+          .originalOpacity;
+
+      if (
+        typeof originalOpacity ===
+        "number"
+      ) {
+        object.material.opacity =
+          originalOpacity;
+      }
+    }
+
+    this.selectedObject = null;
+  }
+
+  private selectSignalPath(
+    object: THREE.Object3D,
+  ): void {
+    if (
+      !(
+        object instanceof
+        THREE.Line
+      )
+    ) {
+      return;
+    }
+
+    if (
+      !(
+        object.material instanceof
+        THREE.LineBasicMaterial
+      )
+    ) {
+      return;
+    }
+
+    object.userData.originalColor =
+      object.material.color.clone();
+
+    object.userData.originalOpacity =
+      object.material.opacity;
+
+    object.material.color.set(
+      0xffffff,
+    );
+
+    object.material.opacity = 1;
+  }
+
+  private selectObject(
+    object: THREE.Object3D,
+  ): void {
+    this.clearSelection();
+
+    if (
+      object.userData.signalPath
+    ) {
+      this.selectSignalPath(object);
+
+      this.selectedObject =
+        object;
+
+      return;
+    }
+
+    object.userData.originalScale =
+      object.scale.clone();
+
+    object.scale.multiplyScalar(
+      1.35,
+    );
+
+    if (hasMaterial(object)) {
+      object.userData.originalOpacity =
+        object.material.opacity;
+
+      object.material.transparent =
+        true;
+
+      object.material.opacity =
+        Math.min(
+          1,
+          object.material.opacity +
+            0.25,
+        );
+    }
+
+    this.selectedObject =
+      object;
+  }
+
   private handlePointerDown = (
     event: PointerEvent,
   ): void => {
+    this.pointerDownPosition =
+      new THREE.Vector2(
+        event.clientX,
+        event.clientY,
+      );
+  };
+
+  private handlePointerUp = (
+    event: PointerEvent,
+  ): void => {
+    if (
+      this.pointerDownPosition === null
+    ) {
+      return;
+    }
+
+  const start = {
+    x: this.pointerDownPosition.x,
+    y: this.pointerDownPosition.y,
+  };
+
+  const end = {
+    x: event.clientX,
+    y: event.clientY,
+  };
+
+  this.pointerDownPosition = null;
+
+  if (
+    !isClickGesture(
+      start,
+      end,
+      GlobeRenderingContext
+        .CLICK_DRAG_THRESHOLD,
+    )
+  ) {
+    return;
+  }
+    this.handleSelection(event);
+  };
+
+  private handleSelection(
+    event: PointerEvent,
+  ): void {
     const pointer =
       pointerToNormalizedDeviceCoordinates(
         event.clientX,
@@ -82,21 +278,32 @@ export class GlobeRenderingContext {
         true,
       );
 
-    if (
-      intersections.length === 0
-    ) {
-      console.log(
-        "No selectable object hit",
+    const stationIntersection =
+      intersections.find(
+        ({ object }) =>
+          object.userData.station,
       );
+
+    const signalPathIntersection =
+      intersections.find(
+        ({ object }) =>
+          object.userData.signalPath,
+      );
+
+    const selectable =
+      stationIntersection ??
+      signalPathIntersection;
+
+    if (!selectable) {
+      this.clearSelection();
 
       return;
     }
 
-    console.log(
-      "Hit object:",
-      intersections[0].object,
+    this.selectObject(
+      selectable.object,
     );
-  };
+  }
 
   private updateSolarLighting(): void {
     const sunDirection =
@@ -121,6 +328,11 @@ export class GlobeRenderingContext {
       .addEventListener(
         "pointerdown",
         this.handlePointerDown,
+      );
+    this.renderer.domElement
+      .addEventListener(
+        "pointerup",
+        this.handlePointerUp,
       );
  
     this.controls =
@@ -355,6 +567,11 @@ export class GlobeRenderingContext {
       .removeEventListener(
         "pointerdown",
         this.handlePointerDown,
+      );
+    this.renderer.domElement
+      .removeEventListener(
+        "pointerup",
+        this.handlePointerUp,
       );
     this.renderer.dispose();
     this.container = null;

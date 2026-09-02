@@ -12,12 +12,19 @@ import {
 describe(
   "createRaycaster",
   () => {
-    it("creates a raycaster", () => {
-      const raycaster =
-        createRaycaster();
+    it(
+      "creates a raycaster with a narrow line hit threshold",
+      () => {
+        const raycaster =
+          createRaycaster();
 
-      expect(raycaster).toBeDefined();
-    });
+        expect(raycaster).toBeDefined();
+
+        expect(
+          raycaster.params.Line.threshold,
+        ).toBe(0.02);
+      },
+    );
   },
 );
 
