@@ -14,7 +14,9 @@ export function useGlobeRenderer(
   containerRef: RefObject<HTMLDivElement | null>,
   solarWeather: SolarWeatherSnapshot | null,
   anomalies: Anomaly[],
-): void {
+): {
+  resetCamera: () => void;
+} {
   const renderingContextRef =
     useRef<GlobeRenderingContext | null>(
       null,
@@ -84,4 +86,13 @@ export function useGlobeRenderer(
         anomalies,
       );
   }, [anomalies]);
+
+  const resetCamera = (): void => {
+    renderingContextRef.current
+      ?.resetCamera();
+  };
+
+  return {
+    resetCamera,
+  };
 }

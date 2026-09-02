@@ -1,10 +1,16 @@
 import * as THREE from "three";
+import {
+  OrbitControls,
+} from "three/examples/jsm/controls/OrbitControls.js";
 
 import { AnomalyLayer } from "./AnomalyLayer";
 import { createAtmosphere } from "./createAtmosphere";
 import { createCamera } from "./createCamera";
 import { createEarth } from "./createEarth";
 import { createLighting } from "./createLighting";
+import {
+  createNavigationControls,
+} from "./createNavigationControls";
 import { createRenderer } from "./createRenderer";
 import { createStationMarker } from "./createStationMarker";
 import { PredictionPathLayer } from "./PredictionPathLayer";
@@ -29,6 +35,10 @@ export class GlobeRenderingContext {
 
   private readonly anomalies =
     new AnomalyLayer();
+  private readonly controls:
+    OrbitControls;
+  private readonly predictionPaths =
+    new PredictionPathLayer();
   private readonly signalArcs =
     new SignalArcCollection();
   private readonly spotDensity =
@@ -37,8 +47,6 @@ export class GlobeRenderingContext {
     new SolarTerminatorLayer();
   private readonly solarWeather =
     new SolarWeatherLayer();
-  private readonly predictionPaths =
-    new PredictionPathLayer();
 
   private solarUpdateAccumulator = 0;
   private animationFrameId: number | null = null;
@@ -62,6 +70,13 @@ export class GlobeRenderingContext {
     const lighting = createLighting();
     const earth = createEarth();
     const atmosphere = createAtmosphere();
+
+    this.controls =
+  
+    createNavigationControls(
+        this.camera,
+        this.renderer.domElement,
+      );
 
     this.directionalLight =
       lighting.directionalLight;
@@ -219,6 +234,11 @@ export class GlobeRenderingContext {
     );
   }
 
+  resetCamera(): void {
+    this.controls.reset();
+    this.controls.update();
+  }
+
   resize(width: number, height: number): void {
     if (width <= 0 || height <= 0) {
       return;
@@ -279,6 +299,7 @@ export class GlobeRenderingContext {
     this.solarWeather.dispose();
     this.predictionPaths.dispose();
     this.anomalies.dispose();
+    this.controls.dispose();
     this.renderer.dispose();
     this.container = null;
   }
@@ -316,6 +337,8 @@ export class GlobeRenderingContext {
     this.anomalies.update(
       elapsedSeconds,
     );
+
+    this.controls.update();
 
     this.renderer.render(
       this.scene,

@@ -8,7 +8,7 @@ export function createCamera(): THREE.PerspectiveCamera {
     1000,
   );
 
-  camera.position.set(0, 0, 3);
+  camera.position.set(0, 0, 2.6);
 
   return camera;
 }

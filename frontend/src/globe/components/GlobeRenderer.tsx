@@ -22,20 +22,37 @@ export function GlobeRenderer() {
     anomalies,
   } = useAnomalies();
 
-  useGlobeRenderer(
+  const {
+    resetCamera,
+  } = useGlobeRenderer(
     containerRef,
     solarWeather,
     anomalies,
   );
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        width: "100%",
-        height: "100vh",
-        overflow: "hidden",
-      }}
-    />
+    <>
+      <button
+        type="button"
+        onClick={resetCamera}
+        style={{
+          position: "absolute",
+          top: 16,
+          left: 16,
+          zIndex: 10,
+        }}
+      >
+        Reset camera
+      </button>
+
+      <div
+        ref={containerRef}
+        style={{
+          width: "100%",
+          height: "100vh",
+          overflow: "hidden",
+        }}
+      />
+    </>
   );
 }
