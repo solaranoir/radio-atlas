@@ -55,10 +55,21 @@ export class SignalArcCollection {
 
   update(deltaSeconds: number): void {
     for (const arc of this.arcs.values()) {
-      const targetOpacity =
-        arc.userData.targetOpacity as number | undefined;
+      if (
+        arc.userData.isSelected ===
+        true
+      ) {
+        continue;
+      }
 
-      if (targetOpacity === undefined) {
+      const targetOpacity =
+        arc.userData.targetOpacity as
+          | number
+          | undefined;
+
+      if (
+        targetOpacity === undefined
+      ) {
         continue;
       }
 
