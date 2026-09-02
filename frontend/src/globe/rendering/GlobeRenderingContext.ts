@@ -32,6 +32,18 @@ import {
 import {
   isClickGesture,
 } from "../interactions/isClickGesture";
+import {
+  isObjectVisible,
+} from "../interactions/isObjectVisible";
+import {
+  LayerController,
+} from "../layers/LayerController";
+import {
+  globeLayerRegistry,
+} from "../layers/layerRegistry";
+import type {
+  GlobeLayerId,
+} from "../layers/globeLayer";
 import type { Anomaly } from "../types/anomaly";
 import type { SolarWeatherSnapshot } from "../types/solarWeather";
 import type {
@@ -63,6 +75,10 @@ export class GlobeRenderingContext {
     OrbitControls;
   private readonly directionalLight:
     THREE.DirectionalLight;
+  private readonly layerController =
+    new LayerController(
+      globeLayerRegistry,
+    );
   private readonly predictionPaths =
     new PredictionPathLayer();
   private readonly raycaster =
@@ -75,6 +91,8 @@ export class GlobeRenderingContext {
     new SolarWeatherLayer();
   private readonly spotDensity =
     new SpotDensityLayer();
+  private readonly stationGroup =
+    new THREE.Group();
   private readonly tooltipElement:
     HTMLDivElement;
   private static readonly CLICK_DRAG_THRESHOLD = 5;
@@ -238,6 +256,54 @@ export class GlobeRenderingContext {
       object.material.color.set(
         0xd8f3ff,
       );
+    }
+  }
+
+  private getLayerObject(
+    id: GlobeLayerId,
+  ): THREE.Object3D {
+    switch (id) {
+      case "stations":
+        return this.stationGroup;
+
+      case "signal-paths":
+        return this.signalArcs.group;
+
+      case "spot-density":
+        return this.spotDensity.group;
+
+      case "solar-terminator":
+        return this.solarTerminator.group;
+
+      case "solar-weather":
+        return this.solarWeather.group;
+
+      case "prediction-paths":
+        return this.predictionPaths.group;
+
+      case "anomalies":
+        return this.anomalies.group;
+    }
+  }
+
+  private applyLayerState(): void {
+    for (
+      const definition of
+      globeLayerRegistry
+    ) {
+      const object =
+        this.getLayerObject(
+          definition.id,
+        );
+
+      object.visible =
+        this.layerController
+          .isVisible(
+            definition.id,
+          );
+
+      object.renderOrder =
+        definition.order;
     }
   }
 
@@ -463,6 +529,10 @@ export class GlobeRenderingContext {
       this.raycaster.intersectObjects(
         this.scene.children,
         true,
+      )            
+        .filter( 
+          ({ object }) =>
+          isObjectVisible(object),
       );
 
     const stationIntersection =
@@ -514,6 +584,10 @@ export class GlobeRenderingContext {
       this.raycaster.intersectObjects(
         this.scene.children,
         true,
+      )
+        .filter(
+          ({ object }) =>
+          isObjectVisible(object),
       );
 
     const hoverTarget =
@@ -625,9 +699,14 @@ export class GlobeRenderingContext {
       this.predictionPaths.group,
       this.anomalies.group,
     );
+    this.scene.add(
+      this.stationGroup,
+    );
 
     this.tooltipElement =
       document.createElement("div");
+
+    this.applyLayerState();
 
     Object.assign(
       this.tooltipElement.style,
@@ -756,7 +835,7 @@ export class GlobeRenderingContext {
     ];
 
     for (const station of stations) {
-      this.scene.add(
+      this.stationGroup.add(
         createStationMarker(station),
       );
     }
@@ -784,6 +863,43 @@ export class GlobeRenderingContext {
     this.anomalies.setAnomalies(
       anomalies,
     );
+  }
+
+  setLayerVisible(
+    id: GlobeLayerId,
+    visible: boolean,
+  ): void {
+    if (visible) {
+      this.layerController.enable(
+        id,
+      );
+    } else {
+      this.layerController.disable(
+        id,
+      );
+    }
+
+    this.applyLayerState();
+  }
+
+  toggleLayer(
+    id: GlobeLayerId,
+  ): boolean {
+    const visible =
+      this.layerController.toggle(
+        id,
+      );
+
+    this.applyLayerState();
+
+    return visible;
+  }
+
+  isLayerVisible(
+    id: GlobeLayerId,
+  ): boolean {
+    return this.layerController
+      .isVisible(id);
   }
 
   resetCamera(): void {
