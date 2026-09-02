@@ -1,5 +1,6 @@
 import * as THREE from "three";
 
+import { AnomalyLayer } from "./AnomalyLayer";
 import { createAtmosphere } from "./createAtmosphere";
 import { createCamera } from "./createCamera";
 import { createEarth } from "./createEarth";
@@ -11,11 +12,12 @@ import { SignalArcCollection } from "./SignalArcCollection";
 import { SolarTerminatorLayer } from "./SolarTerminatorLayer";
 import { SpotDensityLayer } from "./SpotDensityLayer";
 import { SolarWeatherLayer } from "./SolarWeatherLayer";
-import { calculateSpotDensity } from "../utilities/spotDensity";
+import type { Anomaly } from "../types/anomaly";
 import type { SolarWeatherSnapshot } from "../types/solarWeather";
 import type {
   PredictionPath,
 } from "../types/predictionPath";
+import { calculateSpotDensity } from "../utilities/spotDensity";
 
 export class GlobeRenderingContext {
   private readonly scene: THREE.Scene;
@@ -25,6 +27,8 @@ export class GlobeRenderingContext {
   private readonly directionalLight:
     THREE.DirectionalLight;
 
+  private readonly anomalies =
+    new AnomalyLayer();
   private readonly signalArcs =
     new SignalArcCollection();
   private readonly spotDensity =
@@ -56,16 +60,16 @@ export class GlobeRenderingContext {
     this.renderer = createRenderer();
 
     const lighting = createLighting();
+    const earth = createEarth();
+    const atmosphere = createAtmosphere();
+
     this.directionalLight =
       lighting.directionalLight;
-
+  
     this.scene.add(
       lighting.ambientLight,
       lighting.directionalLight,
     );
-
-    const earth = createEarth();
-    const atmosphere = createAtmosphere();
 
     this.scene.add(earth);
     this.scene.add(atmosphere);
@@ -77,6 +81,7 @@ export class GlobeRenderingContext {
     );
     this.scene.add(
       this.predictionPaths.group,
+      this.anomalies.group,
     );
 
     this.updateSolarLighting();
@@ -206,6 +211,14 @@ export class GlobeRenderingContext {
     );
   }
 
+  setAnomalies(
+    anomalies: Anomaly[],
+  ): void {
+    this.anomalies.setAnomalies(
+      anomalies,
+    );
+  }
+
   resize(width: number, height: number): void {
     if (width <= 0 || height <= 0) {
       return;
@@ -265,12 +278,17 @@ export class GlobeRenderingContext {
     this.solarTerminator.dispose();
     this.solarWeather.dispose();
     this.predictionPaths.dispose();
+    this.anomalies.dispose();
     this.renderer.dispose();
     this.container = null;
   }
 
   private render = (): void => {
-    const deltaSeconds = this.clock.getDelta();
+    const deltaSeconds =
+      this.clock.getDelta();
+
+    const elapsedSeconds =
+      this.clock.elapsedTime;
 
     this.signalArcs.update(
       deltaSeconds,
@@ -286,16 +304,27 @@ export class GlobeRenderingContext {
     if (
       this.solarUpdateAccumulator >= 60
     ) {
-     this.solarTerminator.update(
+      this.solarTerminator.update(
         new Date(),
       );
 
       this.updateSolarLighting();
+
       this.solarUpdateAccumulator = 0;
     }
 
-    this.renderer.render(this.scene, this.camera);
+    this.anomalies.update(
+      elapsedSeconds,
+    );
 
-    this.animationFrameId = window.requestAnimationFrame(this.render);
+    this.renderer.render(
+      this.scene,
+      this.camera,
+    );
+
+    this.animationFrameId =
+      window.requestAnimationFrame(
+        this.render,
+      );
   };
 }

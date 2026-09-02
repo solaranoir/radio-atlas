@@ -4,12 +4,16 @@ import {
   type RefObject,
 } from "react";
 
+import type {
+  Anomaly,
+} from "../types/anomaly";
 import type { SolarWeatherSnapshot } from "../types/solarWeather";
 import { GlobeRenderingContext } from "../rendering/GlobeRenderingContext";
 
 export function useGlobeRenderer(
   containerRef: RefObject<HTMLDivElement | null>,
   solarWeather: SolarWeatherSnapshot | null,
+  anomalies: Anomaly[],
 ): void {
   const renderingContextRef =
     useRef<GlobeRenderingContext | null>(
@@ -73,4 +77,11 @@ export function useGlobeRenderer(
         solarWeather,
       );
   }, [solarWeather]);
+
+  useEffect(() => {
+    renderingContextRef.current
+      ?.setAnomalies(
+        anomalies,
+      );
+  }, [anomalies]);
 }
