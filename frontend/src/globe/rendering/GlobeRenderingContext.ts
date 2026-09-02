@@ -1,4 +1,5 @@
 import * as THREE from "three";
+
 import {
   OrbitControls,
 } from "three/examples/jsm/controls/OrbitControls.js";
@@ -18,6 +19,10 @@ import { SignalArcCollection } from "./SignalArcCollection";
 import { SolarTerminatorLayer } from "./SolarTerminatorLayer";
 import { SpotDensityLayer } from "./SpotDensityLayer";
 import { SolarWeatherLayer } from "./SolarWeatherLayer";
+import {
+  createRaycaster,
+  pointerToNormalizedDeviceCoordinates,
+} from "../interactions/createRaycaster";
 import type { Anomaly } from "../types/anomaly";
 import type { SolarWeatherSnapshot } from "../types/solarWeather";
 import type {
@@ -39,6 +44,8 @@ export class GlobeRenderingContext {
     OrbitControls;
   private readonly predictionPaths =
     new PredictionPathLayer();
+  private readonly raycaster =
+    createRaycaster();
   private readonly signalArcs =
     new SignalArcCollection();
   private readonly spotDensity =
@@ -51,6 +58,45 @@ export class GlobeRenderingContext {
   private solarUpdateAccumulator = 0;
   private animationFrameId: number | null = null;
   private container: HTMLElement | null = null;
+  private handlePointerDown = (
+    event: PointerEvent,
+  ): void => {
+    const pointer =
+      pointerToNormalizedDeviceCoordinates(
+        event.clientX,
+        event.clientY,
+        this.renderer.domElement,
+      );
+
+    this.raycaster.setFromCamera(
+      new THREE.Vector2(
+        pointer.x,
+        pointer.y,
+      ),
+      this.camera,
+    );
+
+    const intersections =
+      this.raycaster.intersectObjects(
+        this.scene.children,
+        true,
+      );
+
+    if (
+      intersections.length === 0
+    ) {
+      console.log(
+        "No selectable object hit",
+      );
+
+      return;
+    }
+
+    console.log(
+      "Hit object:",
+      intersections[0].object,
+    );
+  };
 
   private updateSolarLighting(): void {
     const sunDirection =
@@ -71,12 +117,17 @@ export class GlobeRenderingContext {
     const earth = createEarth();
     const atmosphere = createAtmosphere();
 
+    this.renderer.domElement
+      .addEventListener(
+        "pointerdown",
+        this.handlePointerDown,
+      );
+ 
     this.controls =
-  
-    createNavigationControls(
+      createNavigationControls(
         this.camera,
         this.renderer.domElement,
-      );
+      );  
 
     this.directionalLight =
       lighting.directionalLight;
@@ -300,6 +351,11 @@ export class GlobeRenderingContext {
     this.predictionPaths.dispose();
     this.anomalies.dispose();
     this.controls.dispose();
+    this.renderer.domElement
+      .removeEventListener(
+        "pointerdown",
+        this.handlePointerDown,
+      );
     this.renderer.dispose();
     this.container = null;
   }
