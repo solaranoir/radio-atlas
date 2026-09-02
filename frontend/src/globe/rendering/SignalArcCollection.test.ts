@@ -221,4 +221,49 @@ describe("SignalArcCollection", () => {
     collection.dispose();
   });
 
+  it(
+    "does not animate opacity for a selected arc",
+    () => {
+      const collection =
+        new SignalArcCollection();
+
+      const path: SignalPath = {
+        id: "selected-path",
+        source: {
+          latitude: 36.1699,
+          longitude: -115.1398,
+        },
+        target: {
+          latitude: 40.7128,
+          longitude: -74.006,
+        },
+        strength: 0.5,
+      };
+
+      collection.setPaths([
+        path,
+      ]);
+
+      const arc =
+        collection.group
+          .children[0] as THREE.Line<
+          THREE.BufferGeometry,
+          THREE.LineBasicMaterial
+        >;
+
+      arc.userData.isSelected =
+        true;
+
+      arc.material.opacity = 1;
+
+      collection.update(1);
+
+      expect(
+        arc.material.opacity,
+      ).toBe(1);
+
+      collection.dispose();
+    },
+  );
+
 });

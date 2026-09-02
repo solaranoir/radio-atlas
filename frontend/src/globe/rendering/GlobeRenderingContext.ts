@@ -24,6 +24,12 @@ import {
   pointerToNormalizedDeviceCoordinates,
 } from "../interactions/createRaycaster";
 import {
+  findHoverTarget,
+} from "../interactions/findHoverTarget";
+import {
+  getHoverTooltip,
+} from "../interactions/getHoverTooltip";
+import {
   isClickGesture,
 } from "../interactions/isClickGesture";
 import type { Anomaly } from "../types/anomaly";
@@ -46,38 +52,41 @@ function hasMaterial(
 }
 
 export class GlobeRenderingContext {
-  private pointerDownPosition:
-    THREE.Vector2 | null = null;
   private readonly scene: THREE.Scene;
-  private readonly camera: THREE.PerspectiveCamera;
   private readonly renderer: THREE.WebGLRenderer;
-  private readonly clock = new THREE.Clock();
-  private readonly directionalLight:
-    THREE.DirectionalLight;
-  private selectedObject:
-    THREE.Object3D | null = null;
 
   private readonly anomalies =
     new AnomalyLayer();
+  private readonly camera: THREE.PerspectiveCamera;
+  private readonly clock = new THREE.Clock();
   private readonly controls:
     OrbitControls;
+  private readonly directionalLight:
+    THREE.DirectionalLight;
   private readonly predictionPaths =
     new PredictionPathLayer();
   private readonly raycaster =
     createRaycaster();
   private readonly signalArcs =
     new SignalArcCollection();
-  private readonly spotDensity =
-    new SpotDensityLayer();
   private readonly solarTerminator =
     new SolarTerminatorLayer();
   private readonly solarWeather =
     new SolarWeatherLayer();
+  private readonly spotDensity =
+    new SpotDensityLayer();
+  private readonly tooltipElement:
+    HTMLDivElement;
   private static readonly CLICK_DRAG_THRESHOLD = 5;
 
-  private solarUpdateAccumulator = 0;
   private animationFrameId: number | null = null;
   private container: HTMLElement | null = null;
+  private hoveredObject:
+    THREE.Object3D | null = null;
+  private pointerDownPosition:
+    THREE.Vector2 | null = null;  private solarUpdateAccumulator = 0;
+  private selectedObject:
+    THREE.Object3D | null = null;
 
   private clearSelection(): void {
     if (
@@ -104,6 +113,9 @@ export class GlobeRenderingContext {
       object.material instanceof
         THREE.LineBasicMaterial
     ) {
+      object.userData.isSelected =
+        false;
+
       const originalColor =
         object.userData.originalColor;
 
@@ -134,6 +146,172 @@ export class GlobeRenderingContext {
     this.selectedObject = null;
   }
 
+  private clearHover(): void {
+    if (
+      this.hoveredObject === null
+    ) {
+      return;
+    }
+
+    const object =
+      this.hoveredObject;
+
+    if (
+      object === this.selectedObject
+    ) {
+      this.hoveredObject = null;
+
+      return;
+    }
+
+    if (
+      object.userData
+        .hoverOriginalScale
+    ) {
+      object.scale.copy(
+        object.userData
+          .hoverOriginalScale,
+      );
+
+      delete object.userData
+        .hoverOriginalScale;
+    }
+
+    if (
+      object instanceof THREE.Line &&
+      object.material instanceof
+        THREE.LineBasicMaterial
+    ) {
+      const originalColor =
+        object.userData
+          .hoverOriginalColor;
+
+      if (
+        originalColor instanceof
+        THREE.Color
+      ) {
+        object.material.color.copy(
+          originalColor,
+        );
+
+        delete object.userData
+          .hoverOriginalColor;
+      }
+    }
+
+    this.hoveredObject = null;
+  }
+
+  private applyHover(
+    object: THREE.Object3D,
+  ): void {
+    if (
+      object === this.selectedObject
+    ) {
+      return;
+    }
+
+    if (
+      object.userData.station
+    ) {
+      object.userData
+        .hoverOriginalScale =
+        object.scale.clone();
+
+      object.scale.multiplyScalar(
+        1.15,
+      );
+
+      return;
+    }
+
+    if (
+      object.userData.signalPath &&
+      object instanceof THREE.Line &&
+      object.material instanceof
+        THREE.LineBasicMaterial
+    ) {
+      object.userData
+        .hoverOriginalColor =
+        object.material.color.clone();
+
+      object.material.color.set(
+        0xd8f3ff,
+      );
+    }
+  }
+
+  private showTooltip(
+    object: THREE.Object3D,
+    event: PointerEvent,
+  ): void {
+    const tooltip =
+      getHoverTooltip(object);
+
+    if (!tooltip) {
+      this.hideTooltip();
+      return;
+    }
+
+    this.tooltipElement.replaceChildren();
+
+    const title =
+      document.createElement(
+        "strong",
+      );
+
+    title.textContent =
+      tooltip.title;
+
+    this.tooltipElement.appendChild(
+      title,
+    );
+
+    for (
+      const detail of
+      tooltip.details
+    ) {
+      const line =
+        document.createElement(
+          "div",
+        );
+
+      line.textContent = detail;
+
+      this.tooltipElement.appendChild(
+        line,
+      );
+    }
+
+    const offset = 14;
+
+    const left =
+      Math.min(
+        event.clientX + offset,
+        window.innerWidth - 280,
+      );
+
+    const top =
+      Math.min(
+        event.clientY + offset,
+        window.innerHeight - 90,
+      );
+
+    this.tooltipElement.style.left =
+      `${Math.max(offset, left)}px`;
+
+    this.tooltipElement.style.top =
+      `${Math.max(offset, top)}px`;
+
+    this.tooltipElement.style.display =
+      "block";
+  }
+
+  private hideTooltip(): void {
+    this.tooltipElement.style.display =
+      "none";
+  }
+
   private selectSignalPath(
     object: THREE.Object3D,
   ): void {
@@ -161,6 +339,9 @@ export class GlobeRenderingContext {
     object.userData.originalOpacity =
       object.material.opacity;
 
+    object.userData.isSelected =
+      true;
+
     object.material.color.set(
       0xffffff,
     );
@@ -171,6 +352,12 @@ export class GlobeRenderingContext {
   private selectObject(
     object: THREE.Object3D,
   ): void {
+    if (
+      this.hoveredObject === object
+    ) {
+      this.clearHover();
+    }
+
     this.clearSelection();
 
     if (
@@ -305,6 +492,73 @@ export class GlobeRenderingContext {
     );
   }
 
+  private handlePointerMove = (
+    event: PointerEvent,
+  ): void => {
+    const pointer =
+      pointerToNormalizedDeviceCoordinates(
+        event.clientX,
+        event.clientY,
+        this.renderer.domElement,
+      );
+
+    this.raycaster.setFromCamera(
+      new THREE.Vector2(
+        pointer.x,
+        pointer.y,
+      ),
+      this.camera,
+    );
+
+    const intersections =
+      this.raycaster.intersectObjects(
+        this.scene.children,
+        true,
+      );
+
+    const hoverTarget =
+      findHoverTarget(
+        intersections,
+      );
+
+    if (
+      hoverTarget !==
+      this.hoveredObject
+    ) {
+      this.clearHover();
+
+      if (hoverTarget) {
+        this.hoveredObject =
+          hoverTarget;
+
+        this.applyHover(
+          hoverTarget,
+        );
+      }
+      if (hoverTarget) {
+        this.showTooltip(
+          hoverTarget,
+          event,
+        );
+      } else {
+        this.hideTooltip();
+      }
+    }
+
+    this.renderer.domElement.style.cursor =
+      hoverTarget
+        ? "pointer"
+        : "grab";
+  };
+
+  private handlePointerLeave = (): void => {
+    this.clearHover();
+    this.hideTooltip();
+
+    this.renderer.domElement
+      .style.cursor = "grab";
+  };
+
   private updateSolarLighting(): void {
     const sunDirection =
       this.solarTerminator
@@ -334,6 +588,16 @@ export class GlobeRenderingContext {
         "pointerup",
         this.handlePointerUp,
       );
+    this.renderer.domElement
+      .addEventListener(
+        "pointermove",
+        this.handlePointerMove,
+      );
+    this.renderer.domElement
+      .addEventListener(
+        "pointerleave",
+        this.handlePointerLeave,
+      );
  
     this.controls =
       createNavigationControls(
@@ -360,6 +624,31 @@ export class GlobeRenderingContext {
     this.scene.add(
       this.predictionPaths.group,
       this.anomalies.group,
+    );
+
+    this.tooltipElement =
+      document.createElement("div");
+
+    Object.assign(
+      this.tooltipElement.style,
+      {
+        position: "fixed",
+        display: "none",
+        pointerEvents: "none",
+        zIndex: "1000",
+        padding: "8px 10px",
+        borderRadius: "6px",
+        background:
+          "rgba(8, 15, 28, 0.92)",
+        color: "#ffffff",
+        fontFamily:
+          "system-ui, sans-serif",
+        fontSize: "12px",
+        lineHeight: "1.4",
+        boxShadow:
+          "0 4px 14px rgba(0, 0, 0, 0.35)",
+        maxWidth: "260px",
+      },
     );
 
     this.updateSolarLighting();
@@ -521,12 +810,14 @@ export class GlobeRenderingContext {
     this.container = container;
     this.container.appendChild(this.renderer.domElement);
 
+    document.body.appendChild(
+      this.tooltipElement,
+    );
+
     const { width, height } = container.getBoundingClientRect();
 
     this.resize(width, height);
   }
-
-
 
   start(): void {
     if (this.animationFrameId !== null) {
@@ -549,6 +840,8 @@ export class GlobeRenderingContext {
   dispose(): void {
     this.clock.stop();
     this.stop();
+    this.clearHover();
+    this.hideTooltip();
 
     if (
       this.container !== null &&
@@ -563,6 +856,8 @@ export class GlobeRenderingContext {
     this.predictionPaths.dispose();
     this.anomalies.dispose();
     this.controls.dispose();
+    this.tooltipElement.remove();
+
     this.renderer.domElement
       .removeEventListener(
         "pointerdown",
@@ -572,6 +867,16 @@ export class GlobeRenderingContext {
       .removeEventListener(
         "pointerup",
         this.handlePointerUp,
+      );
+    this.renderer.domElement
+      .removeEventListener(
+        "pointermove",
+        this.handlePointerMove,
+      );
+    this.renderer.domElement
+      .removeEventListener(
+        "pointerleave",
+        this.handlePointerLeave,
       );
     this.renderer.dispose();
     this.container = null;
