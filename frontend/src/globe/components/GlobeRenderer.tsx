@@ -2,6 +2,9 @@ import {
   useRef,
 } from "react";
 
+import {
+  useAnomalies,
+} from "../hooks/useAnomalies";
 import { useGlobeRenderer } from "../hooks/useGlobeRenderer";
 import { useSolarWeather } from "../hooks/useSolarWeather";
 
@@ -15,9 +18,14 @@ export function GlobeRenderer() {
     snapshot: solarWeather,
   } = useSolarWeather();
 
+  const {
+    anomalies,
+  } = useAnomalies();
+
   useGlobeRenderer(
     containerRef,
     solarWeather,
+    anomalies,
   );
 
   return (
