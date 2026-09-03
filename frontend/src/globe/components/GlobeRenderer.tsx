@@ -1,8 +1,12 @@
 import { useRef } from "react";
 
+
 import { useAnomalies } from "../hooks/useAnomalies";
 import { useGlobeRenderer } from "../hooks/useGlobeRenderer";
 import { useSolarWeather } from "../hooks/useSolarWeather";
+import {
+  GlobeLayout,
+} from "./GlobeLayout";
 import { LayerControls } from "./LayerControls";
 
 export function GlobeRenderer() {
@@ -12,46 +16,82 @@ export function GlobeRenderer() {
 
     const { anomalies } = useAnomalies();
 
-    const { resetCamera } = useGlobeRenderer(
-        containerRef,
-        solarWeather,
-        anomalies,
-    );
-
-    const { setLayerVisible } = useGlobeRenderer(
-        containerRef,
-        solarWeather,
-        anomalies,
+    const {
+      resetCamera,
+      setLayerVisible,
+    } = useGlobeRenderer(
+      containerRef,
+      solarWeather,
+      anomalies,
     );
 
     return (
-        <>
-            <div className="globe-toolbar">
-                <button
-                    type="button"
-                    onClick={resetCamera}
-                    style={{
-                        position: "absolute",
-                        top: 16,
-                        left: 16,
-                        zIndex: 10,
-                    }}
-                >
-                    Reset camera
-                </button>
+     <GlobeLayout
+       header={
+         <div className="app-brand">
+           <div className="app-brand__title">
+             SolaraSphere
+           </div>
 
-                <LayerControls onVisibilityChange={setLayerVisible} />
-            </div>
+           <div className="app-brand__subtitle">
+             Radio Atlas
+           </div>
+         </div>
+       }
+       sidebar={
+         <>
+           <section className="control-section">
+             <div className="control-section__heading">
+               Navigation
+             </div>
 
-            <div
-                ref={containerRef}
-                className="globe-container"
-                style={{
-                    width: "100%",
-                    height: "100vh",
-                    overflow: "hidden",
-                }}
-            />
-        </>
-    );
+             <button
+               type="button"
+               className="secondary-button"
+               onClick={resetCamera}
+             >
+               Reset camera
+             </button>
+           </section>
+
+           <section className="control-section">
+             <LayerControls
+               onVisibilityChange={
+                 setLayerVisible
+               }
+             />
+           </section>
+         </>
+       }
+       workspace={
+         <div
+           ref={containerRef}
+           className="globe-container"
+         />
+       }
+       rightPanel={
+         <div className="panel-placeholder">
+           <div className="panel-placeholder__title">
+             Information
+           </div>
+
+           <div className="panel-placeholder__text">
+             Select a station or path to inspect details.
+           </div>
+         </div>
+       }
+       bottomPanel={
+         <div className="panel-placeholder">
+           <div className="panel-placeholder__title">
+             Activity
+           </div>
+
+           <div className="panel-placeholder__text">
+             Recent observations and propagation activity will appear here.
+           </div>
+         </div>
+       }
+
+     />
+   );
 }
