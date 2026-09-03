@@ -44,18 +44,35 @@ export function LayerControls({ onVisibilityChange }: LayerControlsProps) {
     }
 
     return (
-        <fieldset>
-            <legend>Layers</legend>
+          <div
+            className="layer-controls"
+            aria-label="Layers"
+          >
+            <div
+              className="control-section__heading"
+            >
+              Layers
+            </div>
 
-            {globeLayerRegistry.map((layer) => (
-                <LayerToggle
+            <div className="layer-controls__list">
+              {globeLayerRegistry.map(
+                (layer) => (
+                  <LayerToggle
                     key={layer.id}
                     id={layer.id}
                     label={layer.label}
-                    checked={preferences[layer.id]}
-                    onChange={handleChange}
-                />
-            ))}
-        </fieldset>
+                    checked={
+                      preferences[
+                        layer.id
+                      ]
+                    }
+                    onChange={
+                      handleChange
+                    }
+                  />
+                ),
+              )}
+            </div>
+          </div>
     );
 }
