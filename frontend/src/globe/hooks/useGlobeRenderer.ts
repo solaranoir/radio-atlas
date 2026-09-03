@@ -1,14 +1,21 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 
 import type { Anomaly } from "../types/anomaly";
+import type {
+  GlobeSelection,
+} from "../types/globeSelection";
 import type { GlobeLayerId } from "../layers/globeLayer";
 import type { SolarWeatherSnapshot } from "../types/solarWeather";
 import { GlobeRenderingContext } from "../rendering/GlobeRenderingContext";
 
+
 export function useGlobeRenderer(
-    containerRef: RefObject<HTMLDivElement | null>,
-    solarWeather: SolarWeatherSnapshot | null,
-    anomalies: Anomaly[],
+  containerRef: RefObject<HTMLDivElement | null>,
+  solarWeather: SolarWeatherSnapshot | null,
+  anomalies: Anomaly[],
+  onSelectionChange?: (
+    selection: GlobeSelection,
+  ) => void,
 ): {
     resetCamera: () => void;
     setLayerVisible: (id: GlobeLayerId, visible: boolean) => void;
@@ -27,6 +34,12 @@ export function useGlobeRenderer(
         },
         [],
     );
+
+    useEffect(() => {
+        renderingContextRef.current?.setSelectionChangeHandler(
+            onSelectionChange ?? null,
+        );
+    }, [onSelectionChange]);
 
     useEffect(() => {
         if (containerRef.current === null) {

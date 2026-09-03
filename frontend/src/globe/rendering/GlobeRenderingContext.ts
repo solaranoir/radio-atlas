@@ -27,8 +27,17 @@ import { LayerController } from "../layers/LayerController";
 import { globeLayerRegistry } from "../layers/layerRegistry";
 import type { GlobeLayerId } from "../layers/globeLayer";
 import type { Anomaly } from "../types/anomaly";
-import type { SolarWeatherSnapshot } from "../types/solarWeather";
+import type {
+  GlobeSelection,
+} from "../types/globeSelection";
 import type { PredictionPath } from "../types/predictionPath";
+import type {
+  SignalPath,
+} from "../types/signalPath";
+import type { SolarWeatherSnapshot } from "../types/solarWeather";
+import type {
+  Station,
+} from "../types/station";
 import { calculateSpotDensity } from "../utilities/spotDensity";
 
 function hasMaterial(object: THREE.Object3D): object is THREE.Object3D & {
@@ -60,11 +69,16 @@ export class GlobeRenderingContext {
     private animationFrameId: number | null = null;
     private container: HTMLElement | null = null;
     private hoveredObject: THREE.Object3D | null = null;
+    private onSelectionChange:
+      | ((selection: GlobeSelection) => void)
+      | null = null;
     private pointerDownPosition: THREE.Vector2 | null = null;
     private solarUpdateAccumulator = 0;
     private selectedObject: THREE.Object3D | null = null;
 
-    private clearSelection(): void {
+    private clearSelection(
+      notify = true,
+    ): void {
         if (this.selectedObject === null) {
             return;
         }
@@ -97,6 +111,10 @@ export class GlobeRenderingContext {
         }
 
         this.selectedObject = null;
+
+        if (notify) {
+          this.onSelectionChange?.(null);
+        }
     }
 
     private clearHover(): void {
@@ -259,12 +277,18 @@ export class GlobeRenderingContext {
             this.clearHover();
         }
 
-        this.clearSelection();
+        this.clearSelection(false);
 
         if (object.userData.signalPath) {
             this.selectSignalPath(object);
 
             this.selectedObject = object;
+
+            this.onSelectionChange?.({
+              kind: "signal-path",
+              path: object.userData
+                .signalPath as SignalPath,
+            });
 
             return;
         }
@@ -285,6 +309,14 @@ export class GlobeRenderingContext {
         }
 
         this.selectedObject = object;
+
+       if (object.userData.station) {
+         this.onSelectionChange?.({
+           kind: "station",
+           station: object.userData
+             .station as Station,
+         });
+       }
     }
 
     private handlePointerDown = (event: PointerEvent): void => {
@@ -587,6 +619,14 @@ export class GlobeRenderingContext {
         this.anomalies.setAnomalies(anomalies);
     }
 
+    setSelectionChangeHandler(
+      handler:
+        | ((selection: GlobeSelection) => void)
+        | null,
+    ): void {
+      this.onSelectionChange = handler;
+    }
+
     setLayerVisible(id: GlobeLayerId, visible: boolean): void {
         if (visible) {
             this.layerController.enable(id);
@@ -702,6 +742,7 @@ export class GlobeRenderingContext {
             "pointerleave",
             this.handlePointerLeave,
         );
+        this.onSelectionChange = null;
         this.renderer.dispose();
         this.container = null;
     }

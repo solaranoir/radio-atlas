@@ -16,11 +16,17 @@ import { useGlobeRenderer } from "../hooks/useGlobeRenderer";
 import {
   useObservations,
 } from "../hooks/useObservations";
+import type {
+  GlobeSelection,
+} from "../types/globeSelection";
 import { useSolarWeather } from "../hooks/useSolarWeather";
 import { FilterPanel } from "./FilterPanel";
 import {
   GlobeLayout,
 } from "./GlobeLayout";
+import {
+  InformationPanel,
+} from "./InformationPanel";
 import { LayerControls } from "./LayerControls";
 
 export function GlobeRenderer() {
@@ -31,6 +37,14 @@ export function GlobeRenderer() {
     const [filters, setFilters] =
       useState<GlobeFilters>(
         DEFAULT_GLOBE_FILTERS,
+      );
+
+    const [
+      selection,
+      setSelection,
+    ] =
+      useState<GlobeSelection>(
+        null,
       );
 
     const {
@@ -62,6 +76,7 @@ export function GlobeRenderer() {
       containerRef,
       solarWeather,
       anomalies,
+      setSelection,
     );
 
     return (
@@ -116,15 +131,15 @@ export function GlobeRenderer() {
          />
        }
        rightPanel={
-         <div className="panel-placeholder">
-           <div className="panel-placeholder__title">
-             Information
-           </div>
-
-           <div className="panel-placeholder__text">
-             Select a station or path to inspect details.
-           </div>
-         </div>
+          <InformationPanel
+            selection={selection}
+            observationCount={
+              filteredObservations.length
+            }
+            anomalyCount={
+              anomalies.length
+            }
+         />
        }
        bottomPanel={
          <div className="activity-panel">
