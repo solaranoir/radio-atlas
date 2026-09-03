@@ -1,10 +1,9 @@
 import {
-  useEffect,
-  useState,
+  useMemo,
 } from "react";
 
-import {
-  fetchObservations,
+import type {
+  RadioObservation,
 } from "../../api/observations";
 import type {
   Anomaly,
@@ -13,65 +12,14 @@ import {
   detectAnomalies,
 } from "../utilities/anomalyDetection";
 
-export function useAnomalies(): {
-  anomalies: Anomaly[];
-  error: Error | null;
-} {
-  const [
-    anomalies,
-    setAnomalies,
-  ] =
-    useState<Anomaly[]>([]);
-
-  const [
-    error,
-    setError,
-  ] =
-    useState<Error | null>(
-      null,
-    );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load(): Promise<void> {
-      try {
-        const observations =
-          await fetchObservations();
-
-        if (cancelled) {
-          return;
-        }
-
-        setAnomalies(
-          detectAnomalies(
-            observations,
-          ),
-        );
-      } catch (cause) {
-        if (cancelled) {
-          return;
-        }
-
-        setError(
-          cause instanceof Error
-            ? cause
-            : new Error(
-                "Failed to load anomalies",
-              ),
-        );
-      }
-    }
-
-    void load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return {
-    anomalies,
-    error,
-  };
+export function useAnomalies(
+  observations: RadioObservation[],
+): Anomaly[] {
+  return useMemo(
+    () =>
+      detectAnomalies(
+        observations,
+      ),
+    [observations],
+  );
 }
