@@ -1,9 +1,23 @@
-import { useRef } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-
+import {
+  filterObservations,
+} from "../filters/filterObservations";
+import {
+  DEFAULT_GLOBE_FILTERS,
+  type GlobeFilters,
+} from "../filters/globeFilters";
 import { useAnomalies } from "../hooks/useAnomalies";
 import { useGlobeRenderer } from "../hooks/useGlobeRenderer";
+import {
+  useObservations,
+} from "../hooks/useObservations";
 import { useSolarWeather } from "../hooks/useSolarWeather";
+import { FilterPanel } from "./FilterPanel";
 import {
   GlobeLayout,
 } from "./GlobeLayout";
@@ -14,7 +28,32 @@ export function GlobeRenderer() {
 
     const { snapshot: solarWeather } = useSolarWeather();
 
-    const { anomalies } = useAnomalies();
+    const [filters, setFilters] =
+      useState<GlobeFilters>(
+        DEFAULT_GLOBE_FILTERS,
+      );
+
+    const {
+      observations,
+    } = useObservations();
+
+    const filteredObservations =
+      useMemo(
+        () =>
+          filterObservations(
+            observations,
+            filters,
+          ),
+        [
+          observations,
+          filters,
+        ],
+      );
+
+     const anomalies =
+      useAnomalies(
+        filteredObservations,
+      );
 
     const {
       resetCamera,
@@ -39,7 +78,7 @@ export function GlobeRenderer() {
          </div>
        }
        sidebar={
-         <>
+          <>
            <section className="control-section">
              <div className="control-section__heading">
                Navigation
@@ -54,14 +93,21 @@ export function GlobeRenderer() {
              </button>
            </section>
 
-           <section className="control-section">
-             <LayerControls
-               onVisibilityChange={
-                 setLayerVisible
-               }
-             />
-           </section>
-         </>
+          <section className="control-section">
+            <FilterPanel
+              filters={filters}
+              onChange={setFilters}
+            />
+          </section>
+
+          <section className="control-section">
+            <LayerControls
+              onVisibilityChange={
+                setLayerVisible
+              }
+            />
+          </section>
+        </>
        }
        workspace={
          <div
@@ -81,13 +127,23 @@ export function GlobeRenderer() {
          </div>
        }
        bottomPanel={
-         <div className="panel-placeholder">
-           <div className="panel-placeholder__title">
-             Activity
-           </div>
+         <div className="activity-panel">
+           <h2>Activity</h2>
 
-           <div className="panel-placeholder__text">
-             Recent observations and propagation activity will appear here.
+           <div className="activity-panel__stats">
+             <span>
+               <strong>
+                 {filteredObservations.length}
+               </strong>{" "}
+               of {observations.length} observations
+             </span>
+
+             <span>
+               <strong>
+                 {anomalies.length}
+               </strong>{" "}
+               anomalies
+             </span>
            </div>
          </div>
        }
