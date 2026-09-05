@@ -7,23 +7,32 @@ import {
   generateGreatCirclePath,
 } from "../utilities/greatCirclePath";
 import {
+  advanceOpeningDissolve,
+} from "../utilities/openingDissolve";
+import {
   mapPredictionVisuals,
 } from "../utilities/predictionVisuals";
 
 const PREDICTION_RADIUS = 1.035;
+
+interface PredictionPathVisual {
+  line: THREE.Line<
+    THREE.BufferGeometry,
+    THREE.LineDashedMaterial
+  >;
+  targetOpacity: number;
+  state:
+    | "appearing"
+    | "steady"
+    | "disappearing";
+}
 
 export class PredictionPathLayer {
   readonly group =
     new THREE.Group();
 
   private readonly paths =
-    new Map<
-      string,
-      THREE.Line<
-        THREE.BufferGeometry,
-        THREE.LineDashedMaterial
-      >
-    >();
+    new Map<string, PredictionPathVisual>();
 
   setPaths(
     predictions: PredictionPath[],
@@ -38,13 +47,11 @@ export class PredictionPathLayer {
 
     for (const [
       id,
-      line,
+      visual,
     ] of this.paths) {
       if (!nextIds.has(id)) {
-        this.group.remove(line);
-        line.geometry.dispose();
-        line.material.dispose();
-        this.paths.delete(id);
+        visual.state =
+          "disappearing";
       }
     }
 
@@ -56,13 +63,53 @@ export class PredictionPathLayer {
     }
   }
 
+  update(deltaSeconds: number): void {
+    for (const [
+      id,
+      visual,
+    ] of this.paths) {
+      const result =
+        advanceOpeningDissolve(
+          visual.line.material.opacity,
+          visual.targetOpacity,
+          visual.state,
+          deltaSeconds,
+        );
+
+      visual.line.material.opacity =
+        result.opacity;
+
+      if (
+        visual.state ===
+          "appearing" &&
+        result.complete
+      ) {
+        visual.state = "steady";
+      }
+
+      if (
+        visual.state ===
+          "disappearing" &&
+        result.complete
+      ) {
+        this.group.remove(
+          visual.line,
+        );
+
+        visual.line.geometry.dispose();
+        visual.line.material.dispose();
+
+        this.paths.delete(id);
+      }
+    }
+  }
   dispose(): void {
     for (
-      const line
+      const visual
       of this.paths.values()
     ) {
-      line.geometry.dispose();
-      line.material.dispose();
+      visual.line.geometry.dispose();
+      visual.line.material.dispose();
     }
 
     this.paths.clear();
@@ -72,22 +119,35 @@ export class PredictionPathLayer {
   private setPath(
     prediction: PredictionPath,
   ): void {
+
+    const visuals =
+      mapPredictionVisuals(
+        prediction.confidence,
+      );
+
     const existing =
       this.paths.get(
         prediction.id,
       );
 
     if (existing) {
-      this.group.remove(
-        existing,
-      );
+      existing.targetOpacity =
+        visuals.opacity;
 
-      existing.geometry.dispose();
-      existing.material.dispose();
+      existing.state =
+        existing.state ===
+          "disappearing"
+          ? "appearing"
+          : existing.state;
 
-      this.paths.delete(
-        prediction.id,
-      );
+      existing.line.material.dashSize =
+        0.035 *
+        visuals.dashScale;
+
+      existing.line.material.needsUpdate =
+        true;
+
+      return;
     }
 
     const points =
@@ -111,17 +171,12 @@ export class PredictionPathLayer {
               ),
           ),
         );
-    const visuals =
-      mapPredictionVisuals(
-        prediction.confidence,
-      );
 
     const material =
       new THREE.LineDashedMaterial({
         color: 0x9ad7ff,
         transparent: true,
-        opacity:
-          visuals.opacity,
+        opacity: 0,
         dashSize:
           0.035 *
           visuals.dashScale,
@@ -138,8 +193,14 @@ export class PredictionPathLayer {
 
     this.paths.set(
       prediction.id,
-      line,
+      {
+        line,
+        targetOpacity:
+          visuals.opacity,
+        state: "appearing",
+      },
     );
+
 
     this.group.add(
       line,
