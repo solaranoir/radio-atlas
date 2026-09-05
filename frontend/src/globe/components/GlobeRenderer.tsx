@@ -17,8 +17,11 @@ import {
   useObservations,
 } from "../hooks/useObservations";
 import type {
-  GlobeSelection,
-} from "../types/globeSelection";
+  GlobeLayerId,
+} from "../layers/globeLayer";
+import {
+  useGlobeStore,
+} from "../state/globeStore";
 import { useSolarWeather } from "../hooks/useSolarWeather";
 import { FilterPanel } from "./FilterPanel";
 import {
@@ -39,13 +42,41 @@ export function GlobeRenderer() {
         DEFAULT_GLOBE_FILTERS,
       );
 
-    const [
-      selection,
-      setSelection,
-    ] =
-      useState<GlobeSelection>(
-        null,
+    const selection =
+      useGlobeStore(
+        (state) => state.selection,
       );
+
+    const setSelection =
+      useGlobeStore(
+        (state) => state.setSelection,
+    );
+
+    const setCamera =
+      useGlobeStore(
+        (state) => state.setCamera,
+    );
+
+    const setLayerActive =
+      useGlobeStore(
+        (state) =>
+          state.setLayerActive,
+      );
+
+    const handleLayerVisibilityChange = (
+      layerId: GlobeLayerId,
+      visible: boolean,
+    ) => {
+      setLayerVisible(
+        layerId,
+        visible,
+      );
+
+      setLayerActive(
+        layerId,
+        visible,
+      );
+    };
 
     const {
       observations,
@@ -77,6 +108,7 @@ export function GlobeRenderer() {
       solarWeather,
       anomalies,
       setSelection,
+      setCamera,
     );
 
     return (
@@ -118,7 +150,7 @@ export function GlobeRenderer() {
           <section className="control-section">
             <LayerControls
               onVisibilityChange={
-                setLayerVisible
+                handleLayerVisibilityChange
               }
             />
           </section>
