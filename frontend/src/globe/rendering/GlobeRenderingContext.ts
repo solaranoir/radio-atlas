@@ -26,6 +26,9 @@ import { isObjectVisible } from "../interactions/isObjectVisible";
 import { LayerController } from "../layers/LayerController";
 import { globeLayerRegistry } from "../layers/layerRegistry";
 import type { GlobeLayerId } from "../layers/globeLayer";
+import type {
+  GlobeCameraState,
+} from "../state/globeStore";
 import type { Anomaly } from "../types/anomaly";
 import type {
   GlobeSelection,
@@ -69,12 +72,16 @@ export class GlobeRenderingContext {
     private animationFrameId: number | null = null;
     private container: HTMLElement | null = null;
     private hoveredObject: THREE.Object3D | null = null;
+    private onCameraChange:
+      | ((camera: GlobeCameraState) => void)
+      | null = null;
     private onSelectionChange:
       | ((selection: GlobeSelection) => void)
       | null = null;
     private pointerDownPosition: THREE.Vector2 | null = null;
     private solarUpdateAccumulator = 0;
     private selectedObject: THREE.Object3D | null = null;
+
 
     private clearSelection(
       notify = true,
@@ -619,6 +626,14 @@ export class GlobeRenderingContext {
         this.anomalies.setAnomalies(anomalies);
     }
 
+    setCameraChangeHandler(
+      handler:
+        | ((camera: GlobeCameraState) => void)
+        | null,
+    ): void {
+      this.onCameraChange = handler;
+    }
+
     setSelectionChangeHandler(
       handler:
         | ((selection: GlobeSelection) => void)
@@ -743,6 +758,18 @@ export class GlobeRenderingContext {
             this.handlePointerLeave,
         );
         this.onSelectionChange = null;
+        this.onCameraChange?.({
+          position: {
+            x: this.camera.position.x,
+            y: this.camera.position.y,
+            z: this.camera.position.z,
+          },
+          target: {
+            x: this.controls.target.x,
+            y: this.controls.target.y,
+            z: this.controls.target.z,
+          },
+        });
         this.renderer.dispose();
         this.container = null;
     }

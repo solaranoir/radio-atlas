@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 
+import type {
+  GlobeCameraState,
+} from "../state/globeStore";
 import type { Anomaly } from "../types/anomaly";
 import type {
   GlobeSelection,
@@ -15,6 +18,9 @@ export function useGlobeRenderer(
   anomalies: Anomaly[],
   onSelectionChange?: (
     selection: GlobeSelection,
+  ) => void,
+  onCameraChange?: (
+    camera: GlobeCameraState,
   ) => void,
 ): {
     resetCamera: () => void;
@@ -40,6 +46,13 @@ export function useGlobeRenderer(
             onSelectionChange ?? null,
         );
     }, [onSelectionChange]);
+
+    useEffect(() => {
+        renderingContextRef.current
+          ?.setCameraChangeHandler(
+            onCameraChange ?? null,
+          );
+     }, [onCameraChange]);
 
     useEffect(() => {
         if (containerRef.current === null) {
