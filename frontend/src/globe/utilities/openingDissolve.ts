@@ -1,3 +1,7 @@
+import {
+  TRANSITION_DURATIONS_SECONDS,
+} from "./transitionStandards";
+
 export type OpeningDissolveState =
   | "appearing"
   | "steady"
@@ -7,8 +11,6 @@ export interface OpeningDissolveResult {
   opacity: number;
   complete: boolean;
 }
-
-const DISSOLVE_DURATION_SECONDS = 0.6;
 
 export function advanceOpeningDissolve(
   currentOpacity: number,
@@ -21,7 +23,8 @@ export function advanceOpeningDissolve(
 
   const maxOpacityChange =
     safeDelta /
-    DISSOLVE_DURATION_SECONDS;
+    TRANSITION_DURATIONS_SECONDS
+      .deliberate;
 
   if (state === "appearing") {
     const opacity =
