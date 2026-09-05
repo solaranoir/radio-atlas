@@ -2,11 +2,12 @@ import * as THREE from "three";
 
 import type { SignalPath } from "../types/signalPath";
 import {
+  TRANSITION_RATES_PER_SECOND,
+} from "../utilities/transitionStandards";
+import {
   createSignalArc,
   updateSignalArc,
 } from "./createSignalArc";
-
-const OPACITY_CHANGE_RATE = 1.5;
 
 type SignalArc = ReturnType<
   typeof createSignalArc
@@ -87,7 +88,8 @@ export class SignalArcCollection {
       }
 
       const maximumChange =
-        OPACITY_CHANGE_RATE *
+        TRANSITION_RATES_PER_SECOND
+          .opacity *
         deltaSeconds;
 
       const change =
