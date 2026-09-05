@@ -105,6 +105,12 @@ describe("PredictionPathLayer", () => {
 
     expect(
       layer.group.children,
+    ).toHaveLength(1);
+
+    layer.update(0.6);
+
+    expect(
+      layer.group.children,
     ).toHaveLength(0);
 
     layer.dispose();
@@ -126,6 +132,8 @@ describe("PredictionPathLayer", () => {
         confidence: 0.9,
       },
     ]);
+
+    layer.update(0.6);
 
     const lowLine =
       layer.group.children[0] as THREE.Line<

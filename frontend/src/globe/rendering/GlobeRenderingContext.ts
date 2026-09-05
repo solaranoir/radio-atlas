@@ -753,9 +753,10 @@ export class GlobeRenderingContext {
         const elapsedSeconds = this.clock.elapsedTime;
 
         this.signalArcs.update(deltaSeconds);
-
         this.spotDensity.update(deltaSeconds);
-
+        this.predictionPaths.update(
+          deltaSeconds,
+        );
         this.solarUpdateAccumulator += deltaSeconds;
 
         if (this.solarUpdateAccumulator >= 60) {
