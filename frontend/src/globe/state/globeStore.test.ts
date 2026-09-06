@@ -197,4 +197,76 @@ describe("globeStore", () => {
     ).toBe(0);
   });
 
+  it("starts with the default globe filters", () => {
+    expect(
+      useGlobeStore.getState()
+        .filters,
+    ).toEqual({
+      band: null,
+      mode: null,
+      region: null,
+      timeRange: "1h",
+    });
+  });
+
+  it("stores globe filters", () => {
+    const filters = {
+      band: "20m" as const,
+      mode: "FT8" as const,
+      region:
+        "North America" as const,
+      timeRange: "6h" as const,
+    };
+
+    useGlobeStore
+      .getState()
+      .setFilters(filters);
+
+    expect(
+      useGlobeStore.getState()
+        .filters,
+    ).toEqual(filters);
+  });
+
+  it("tracks multiple active layers", () => {
+    const {
+      setLayerActive,
+    } = useGlobeStore.getState();
+
+    setLayerActive(
+      "stations",
+      true,
+    );
+
+    setLayerActive(
+      "signal-paths",
+      true,
+    );
+
+    setLayerActive(
+      "anomalies",
+      true,
+    );
+
+    const activeLayers =
+      useGlobeStore.getState()
+        .activeLayers;
+
+    expect(
+      activeLayers.has("stations"),
+    ).toBe(true);
+
+    expect(
+      activeLayers.has(
+        "signal-paths",
+      ),
+    ).toBe(true);
+
+    expect(
+      activeLayers.has("anomalies"),
+    ).toBe(true);
+
+    expect(activeLayers.size).toBe(3);
+  });
+
 });
