@@ -29,7 +29,6 @@ export function LayerControls({ onVisibilityChange }: LayerControlsProps) {
     }, [onVisibilityChange, preferences]);
 
     function handleChange(id: GlobeLayerId, visible: boolean): void {
-        onVisibilityChange(id, visible);
 
         setPreferences((current) => {
             const next = {

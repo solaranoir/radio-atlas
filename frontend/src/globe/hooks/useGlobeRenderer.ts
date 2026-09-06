@@ -4,10 +4,10 @@ import type {
   GlobeCameraState,
 } from "../state/globeStore";
 import type { Anomaly } from "../types/anomaly";
-import type {
-  GlobeSelection,
-} from "../types/globeSelection";
 import type { GlobeLayerId } from "../layers/globeLayer";
+import type {
+    GlobeSelection,
+} from "../types/globeSelection";
 import type { SolarWeatherSnapshot } from "../types/solarWeather";
 import { GlobeRenderingContext } from "../rendering/GlobeRenderingContext";
 
@@ -16,6 +16,7 @@ export function useGlobeRenderer(
   containerRef: RefObject<HTMLDivElement | null>,
   solarWeather: SolarWeatherSnapshot | null,
   anomalies: Anomaly[],
+  selection: GlobeSelection,
   onSelectionChange?: (
     selection: GlobeSelection,
   ) => void,
@@ -53,6 +54,10 @@ export function useGlobeRenderer(
             onCameraChange ?? null,
           );
      }, [onCameraChange]);
+    useEffect(() => {
+        renderingContextRef.current
+            ?.setSelection(selection);
+    }, [selection]);
 
     useEffect(() => {
         if (containerRef.current === null) {

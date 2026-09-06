@@ -1,5 +1,12 @@
 import { create } from "zustand";
 
+import {
+  DEFAULT_GLOBE_FILTERS,
+} from "../filters/globeFilters";
+
+import type {
+  GlobeFilters,
+} from "../filters/globeFilters";
 import type {
   GlobeLayerId,
 } from "../layers/globeLayer";
@@ -24,6 +31,7 @@ export interface GlobeState {
   camera: GlobeCameraState | null;
   selection: GlobeSelection;
   activeLayers: ReadonlySet<GlobeLayerId>;
+  filters: GlobeFilters;
 
   setCamera: (
     camera: GlobeCameraState,
@@ -38,6 +46,10 @@ export interface GlobeState {
     active: boolean,
   ) => void;
 
+  setFilters: (
+    filters: GlobeFilters,
+  ) => void;
+
   resetGlobeState: () => void;
 }
 
@@ -45,6 +57,7 @@ export interface GlobeStateValues {
   camera: GlobeCameraState | null;
   selection: GlobeSelection;
   activeLayers: ReadonlySet<GlobeLayerId>;
+  filters: GlobeFilters;
 }
 
 export function createInitialGlobeState(): GlobeStateValues {
@@ -53,6 +66,9 @@ export function createInitialGlobeState(): GlobeStateValues {
     selection: null,
     activeLayers:
       new Set<GlobeLayerId>(),
+    filters: {
+      ...DEFAULT_GLOBE_FILTERS,
+    },
   };
 }
 
@@ -84,6 +100,10 @@ export const useGlobeStore =
 
         return { activeLayers };
       });
+    },
+
+    setFilters: (filters) => {
+      set({ filters });
     },
 
     resetGlobeState: () => {

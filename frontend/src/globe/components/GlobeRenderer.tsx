@@ -1,16 +1,11 @@
 import {
   useMemo,
   useRef,
-  useState,
 } from "react";
 
 import {
   filterObservations,
 } from "../filters/filterObservations";
-import {
-  DEFAULT_GLOBE_FILTERS,
-  type GlobeFilters,
-} from "../filters/globeFilters";
 import { useAnomalies } from "../hooks/useAnomalies";
 import { useGlobeRenderer } from "../hooks/useGlobeRenderer";
 import {
@@ -37,9 +32,16 @@ export function GlobeRenderer() {
 
     const { snapshot: solarWeather } = useSolarWeather();
 
-    const [filters, setFilters] =
-      useState<GlobeFilters>(
-        DEFAULT_GLOBE_FILTERS,
+    const filters =
+      useGlobeStore(
+        (state) =>
+          state.filters,
+      );
+
+    const setFilters =
+      useGlobeStore(
+        (state) =>
+          state.setFilters,
       );
 
     const selection =
@@ -107,6 +109,7 @@ export function GlobeRenderer() {
       containerRef,
       solarWeather,
       anomalies,
+      selection,
       setSelection,
       setCamera,
     );

@@ -125,6 +125,7 @@ export class GlobeRenderingContext {
     }
 
     private clearHover(): void {
+        this.hideTooltip();
         if (this.hoveredObject === null) {
             return;
         }
@@ -279,7 +280,11 @@ export class GlobeRenderingContext {
         object.material.opacity = 1;
     }
 
-    private selectObject(object: THREE.Object3D): void {
+    private selectObject(
+        object: THREE.Object3D,
+        notify = true,
+    ): void {
+
         if (this.hoveredObject === object) {
             this.clearHover();
         }
@@ -291,11 +296,13 @@ export class GlobeRenderingContext {
 
             this.selectedObject = object;
 
-            this.onSelectionChange?.({
-              kind: "signal-path",
-              path: object.userData
-                .signalPath as SignalPath,
-            });
+            if (notify) {
+                this.onSelectionChange?.({
+                    kind: "signal-path",
+                    path: object.userData
+                        .signalPath as SignalPath,
+                });
+            }
 
             return;
         }
@@ -317,12 +324,15 @@ export class GlobeRenderingContext {
 
         this.selectedObject = object;
 
-       if (object.userData.station) {
-         this.onSelectionChange?.({
-           kind: "station",
-           station: object.userData
-             .station as Station,
-         });
+       if (
+           notify &&
+           object.userData.station
+       ) {
+           this.onSelectionChange?.({
+               kind: "station",
+               station: object.userData
+                   .station as Station,
+           });
        }
     }
 
@@ -415,25 +425,25 @@ export class GlobeRenderingContext {
 
         const hoverTarget = findHoverTarget(intersections);
 
-        if (hoverTarget !== this.hoveredObject) {
-            this.clearHover();
+            if (hoverTarget !== this.hoveredObject) {
+                this.clearHover();
 
-            if (hoverTarget) {
-                this.hoveredObject = hoverTarget;
+                if (hoverTarget) {
+                    this.hoveredObject = hoverTarget;
 
-                this.applyHover(hoverTarget);
+                    this.applyHover(hoverTarget);
+                }
+                if (hoverTarget) {
+                    this.showTooltip(hoverTarget, event);
+                } else {
+                    this.hideTooltip();
+                }
             }
-            if (hoverTarget) {
-                this.showTooltip(hoverTarget, event);
-            } else {
-                this.hideTooltip();
-            }
-        }
 
-        this.renderer.domElement.style.cursor = hoverTarget
-            ? "pointer"
-            : "grab";
-    };
+            this.renderer.domElement.style.cursor = hoverTarget
+                ? "pointer"
+                : "grab";
+        };
 
     private handlePointerLeave = (): void => {
         this.clearHover();
@@ -446,6 +456,130 @@ export class GlobeRenderingContext {
         const sunDirection = this.solarTerminator.getSunDirection();
 
         this.directionalLight.position.copy(sunDirection).multiplyScalar(5);
+    }
+
+    private getSelectedObjectSelection():
+        GlobeSelection {
+            if (!this.selectedObject) {
+                return null;
+            }
+
+            if (
+                this.selectedObject.userData
+                    .signalPath
+        ) {
+            return {
+                kind: "signal-path",
+                path: this.selectedObject
+                    .userData
+                    .signalPath as SignalPath,
+            };
+        }
+
+        if (
+            this.selectedObject.userData
+                .station
+        ) {
+            return {
+                kind: "station",
+                station: this.selectedObject
+                    .userData
+                    .station as Station,
+            };
+        }
+
+        return null;
+    }
+
+    private isSameSelection(
+        first: Exclude<
+            GlobeSelection,
+            null
+        >,
+        second: Exclude<
+            GlobeSelection,
+            null
+        >,
+    ): boolean {
+        if (first.kind !== second.kind) {
+            return false;
+        }
+
+        if (
+            first.kind === "station" &&
+            second.kind === "station"
+        ) {
+            return (
+                first.station.id ===
+                second.station.id
+            );
+        }
+
+        if (
+            first.kind === "signal-path" &&
+            second.kind === "signal-path"
+        ) {
+            return (
+                first.path.id ===
+                second.path.id
+            );
+        }
+
+        return false;
+    }
+
+    private findObjectForSelection(
+        selection: Exclude<
+            GlobeSelection,
+            null
+        >,
+    ): THREE.Object3D | null {
+         let match: THREE.Object3D | null =
+            null;
+
+        this.scene.traverse((object) => {
+            if (match) {
+                 return;
+            }
+
+            if (
+                selection.kind ===
+                    "station" &&
+                object.userData.station
+            ) {
+                const station =
+                    object.userData
+                        .station as Station;
+
+                if (
+                    station.id ===
+                    selection.station.id
+                ) {
+                    match = object;
+                }
+
+                 return;
+            }
+
+            if (
+                selection.kind ===
+                    "signal-path" &&
+                object.userData.signalPath
+            ) {
+                const path =
+                    object.userData
+                        .signalPath as SignalPath;
+
+                if (
+                    path.id ===
+                    selection.path.id
+                ) {
+                     match = object;
+                }
+            }
+        });
+
+        return match;
     }
 
     constructor() {
@@ -632,6 +766,40 @@ export class GlobeRenderingContext {
         | null,
     ): void {
       this.onCameraChange = handler;
+    }
+
+    setSelection(
+        selection: GlobeSelection,
+    ): void {
+        if (selection === null) {
+            this.clearSelection(false);
+            return;
+        }
+
+        const currentSelection =
+            this.getSelectedObjectSelection();
+
+        if (
+            currentSelection !== null &&
+            this.isSameSelection(
+                currentSelection,
+                selection,
+            )
+        ) {
+            return;
+        }
+
+        const object =
+            this.findObjectForSelection(
+                selection,
+            );
+
+        if (!object) {
+            this.clearSelection(false);
+            return;
+        }
+
+        this.selectObject(object, false);
     }
 
     setSelectionChangeHandler(
