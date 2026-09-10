@@ -11,13 +11,16 @@ import { useGlobeRenderer } from "../hooks/useGlobeRenderer";
 import {
   useObservations,
 } from "../hooks/useObservations";
+import { useSolarWeather } from "../hooks/useSolarWeather";
 import type {
   GlobeLayerId,
 } from "../layers/globeLayer";
+import type {
+  RenderingPerformanceSnapshot,
+} from "../rendering/RenderingPerformanceMonitor";
 import {
   useGlobeStore,
 } from "../state/globeStore";
-import { useSolarWeather } from "../hooks/useSolarWeather";
 import { FilterPanel } from "./FilterPanel";
 import {
   GlobeLayout,
@@ -102,6 +105,16 @@ export function GlobeRenderer() {
         filteredObservations,
       );
 
+    const handlePerformanceSnapshot = (
+      snapshot: RenderingPerformanceSnapshot,
+    ): void => {
+      if (!import.meta.env.DEV) {
+        return;
+      }
+
+      console.table(snapshot);
+    };
+
     const {
       resetCamera,
       setLayerVisible,
@@ -112,6 +125,7 @@ export function GlobeRenderer() {
       selection,
       setSelection,
       setCamera,
+      handlePerformanceSnapshot,
     );
 
     return (

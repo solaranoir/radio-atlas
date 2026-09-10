@@ -10,6 +10,9 @@ import type {
 } from "../types/globeSelection";
 import type { SolarWeatherSnapshot } from "../types/solarWeather";
 import { GlobeRenderingContext } from "../rendering/GlobeRenderingContext";
+import type {
+  RenderingPerformanceSnapshot,
+} from "../rendering/RenderingPerformanceMonitor";
 
 
 export function useGlobeRenderer(
@@ -23,9 +26,15 @@ export function useGlobeRenderer(
   onCameraChange?: (
     camera: GlobeCameraState,
   ) => void,
+  onPerformanceSnapshot?: (
+    snapshot: RenderingPerformanceSnapshot,
+  ) => void,
 ): {
-    resetCamera: () => void;
-    setLayerVisible: (id: GlobeLayerId, visible: boolean) => void;
+  resetCamera: () => void;
+  setLayerVisible: (
+    id: GlobeLayerId,
+    visible: boolean,
+  ) => void;
 } {
     const renderingContextRef = useRef<GlobeRenderingContext | null>(null);
 
@@ -58,6 +67,13 @@ export function useGlobeRenderer(
         renderingContextRef.current
             ?.setSelection(selection);
     }, [selection]);
+
+    useEffect(() => {
+      renderingContextRef.current
+        ?.setPerformanceSnapshotHandler(
+          onPerformanceSnapshot ?? null,
+        );
+    }, [onPerformanceSnapshot]);
 
     useEffect(() => {
         if (containerRef.current === null) {
