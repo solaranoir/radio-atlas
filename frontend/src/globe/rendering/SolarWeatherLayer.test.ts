@@ -61,9 +61,33 @@ describe("SolarWeatherLayer", () => {
       auroraGroup,
     ).toBeDefined();
 
+    if (
+      auroraGroup === undefined
+    ) {
+       throw new Error(
+        "Expected aurora group to exist",
+      );
+    }
+
     expect(
-      auroraGroup?.children,
-    ).toHaveLength(2);
+      auroraGroup.children,
+    ).toHaveLength(1);
+
+    const auroraMesh =
+      auroraGroup.children[0];
+
+    expect(
+      auroraMesh,
+    ).toBeInstanceOf(
+      THREE.InstancedMesh,
+    );
+
+    expect(
+      (
+        auroraMesh as THREE.InstancedMesh
+       ).count,
+    ).toBe(2);
+
 
     layer.dispose();
   });
@@ -146,8 +170,35 @@ describe("SolarWeatherLayer", () => {
       );
 
     expect(
-      auroraGroup?.children,
+      auroraGroup,
+    ).toBeDefined();
+
+    if (
+      auroraGroup === undefined
+    ) {
+       throw new Error(
+        "Expected aurora group to exist",
+      );
+    }
+
+    expect(
+      auroraGroup.children,
     ).toHaveLength(1);
+
+    const auroraMesh =
+      auroraGroup.children[0];
+
+    expect(
+      auroraMesh,
+    ).toBeInstanceOf(
+      THREE.InstancedMesh,
+    );
+
+    expect(
+      (
+        auroraMesh as THREE.InstancedMesh
+      ).count,
+    ).toBe(1);
 
     layer.dispose();
   });

@@ -17,22 +17,41 @@ const AURORA_RADIUS = 0.018;
 const AURORA_SURFACE_OFFSET = 0.016;
 const HALO_RADIUS = EARTH_RADIUS * 1.025;
 
-type AuroraMarker = THREE.Mesh<
-  THREE.CircleGeometry,
-  THREE.MeshBasicMaterial
->;
-
 export class SolarWeatherLayer {
   readonly group = new THREE.Group();
-
-  private readonly auroraGroup =
-    new THREE.Group();
 
   private readonly activityHalo:
     THREE.Mesh<
       THREE.SphereGeometry,
       THREE.MeshBasicMaterial
     >;
+
+  private readonly auroraGeometry =
+    new THREE.CircleGeometry(
+      AURORA_RADIUS,
+      24,
+    );
+
+  private readonly auroraGroup =
+    new THREE.Group();
+
+  private readonly auroraMaterial =
+    new THREE.MeshBasicMaterial({
+      color: 0x66ff99,
+      transparent: true,
+      opacity: 0.08,
+      blending: THREE.AdditiveBlending,
+      depthTest: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      vertexColors: false,
+    });
+
+  private auroraMesh:
+    THREE.InstancedMesh<
+      THREE.CircleGeometry,
+      THREE.MeshBasicMaterial
+    > | null = null;
 
   constructor() {
     const haloGeometry =
@@ -89,30 +108,15 @@ export class SolarWeatherLayer {
   }
 
   dispose(): void {
-    for (
-      const child
-      of this.auroraGroup.children
-    ) {
-      if (
-        child instanceof THREE.Mesh
-      ) {
-        child.geometry.dispose();
+    this.clearAurora();
 
-        if (
-          child.material instanceof
-          THREE.Material
-        ) {
-          child.material.dispose();
-        }
-      }
-    }
-
-    this.auroraGroup.clear();
+    this.auroraGeometry.dispose();
+    this.auroraMaterial.dispose();
 
     this.activityHalo.geometry.dispose();
     this.activityHalo.material.dispose();
 
-    this.group.clear();
+    this.auroraGroup.clear();
   }
 
   private renderAurora(
@@ -120,107 +124,100 @@ export class SolarWeatherLayer {
   ): void {
     this.clearAurora();
 
+    if (observations.length === 0) {
+      return;
+    }
+
+    const mesh =
+      new THREE.InstancedMesh(
+        this.auroraGeometry,
+        this.auroraMaterial,
+        observations.length,
+      );
+
+    const surfaceNormal =
+      new THREE.Vector3();
+
+    const geometryNormal =
+      new THREE.Vector3(0, 0, 1);
+
+    const dummy =
+      new THREE.Object3D();
+
     for (
-      const observation
-      of observations
+      let index = 0;
+      index < observations.length;
+      index += 1
     ) {
-      const marker =
-        createAuroraMarker(
-          observation,
+      const observation =
+        observations[index];
+
+      const intensity =
+        normalizeAuroraIntensity(
+          observation.intensity,
         );
 
-      this.auroraGroup.add(marker);
+      const visuals =
+        mapAuroraVisuals(
+          intensity,
+        );
+
+      const position =
+        geographicToGlobeCoordinates(
+          {
+            latitude:
+              observation.latitude,
+            longitude:
+              observation.longitude,
+          },
+          EARTH_RADIUS + AURORA_SURFACE_OFFSET,
+        );
+
+      surfaceNormal
+        .copy(position)
+        .normalize();
+
+      dummy.position.copy(position);
+
+      dummy.quaternion.setFromUnitVectors(
+        geometryNormal,
+        surfaceNormal,
+      );
+
+      dummy.scale.setScalar(
+          visuals.scale,
+      );
+
+      dummy.updateMatrix();
+
+      mesh.setMatrixAt(
+        index,
+        dummy.matrix,
+      );
     }
+
+    mesh.instanceMatrix.needsUpdate =
+      true;
+
+    mesh.computeBoundingSphere();
+
+    this.auroraMesh = mesh;
+    this.auroraGroup.add(mesh);
   }
 
   private clearAurora(): void {
-    for (
-      const child
-      of this.auroraGroup.children
+    if (
+      this.auroraMesh === null
     ) {
-      if (
-        child instanceof THREE.Mesh
-      ) {
-        child.geometry.dispose();
-
-        if (
-          child.material instanceof
-          THREE.Material
-        ) {
-          child.material.dispose();
-        }
-      }
+      return;
     }
 
-    this.auroraGroup.clear();
+    this.auroraGroup.remove(
+      this.auroraMesh,
+    );
+
+    this.auroraMesh.dispose();
+
+    this.auroraMesh = null;
   }
-}
-
-function createAuroraMarker(
-  observation: AuroraObservation,
-): AuroraMarker {
-  const intensity =
-    normalizeAuroraIntensity(
-      observation.intensity,
-    );
-
-  const visuals =
-    mapAuroraVisuals(
-      intensity,
-    );
-
-  const geometry =
-    new THREE.CircleGeometry(
-      AURORA_RADIUS,
-      24,
-    );
-
-  const material =
-    new THREE.MeshBasicMaterial({
-      color: 0x66ff99,
-      transparent: true,
-      opacity: visuals.opacity,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    });
-
-  const marker =
-    new THREE.Mesh(
-      geometry,
-      material,
-    );
-
-  const position =
-    geographicToGlobeCoordinates(
-      {
-        latitude:
-          observation.latitude,
-        longitude:
-          observation.longitude,
-      },
-      EARTH_RADIUS +
-        AURORA_SURFACE_OFFSET,
-    );
-
-  marker.position.set(
-    position.x,
-    position.y,
-    position.z,
-  );
-
-  marker.lookAt(
-    marker.position
-      .clone()
-      .multiplyScalar(2),
-  );
-
-  marker.scale.setScalar(
-    visuals.scale,
-  );
-
-  marker.userData.observation =
-    observation;
-
-  return marker;
 }

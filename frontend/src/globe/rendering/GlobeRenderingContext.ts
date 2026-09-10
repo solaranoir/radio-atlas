@@ -11,6 +11,10 @@ import { createNavigationControls } from "./createNavigationControls";
 import { createRenderer } from "./createRenderer";
 import { createStationMarker } from "./createStationMarker";
 import { PredictionPathLayer } from "./PredictionPathLayer";
+import {
+  RenderingPerformanceMonitor,
+  type RenderingPerformanceSnapshot,
+} from "./RenderingPerformanceMonitor";
 import { SignalArcCollection } from "./SignalArcCollection";
 import { SolarTerminatorLayer } from "./SolarTerminatorLayer";
 import { SpotDensityLayer } from "./SpotDensityLayer";
@@ -68,12 +72,16 @@ export class GlobeRenderingContext {
     private readonly stationGroup = new THREE.Group();
     private readonly tooltipElement: HTMLDivElement;
     private static readonly CLICK_DRAG_THRESHOLD = 5;
+    private readonly performanceMonitor: RenderingPerformanceMonitor;
 
     private animationFrameId: number | null = null;
     private container: HTMLElement | null = null;
     private hoveredObject: THREE.Object3D | null = null;
     private onCameraChange:
       | ((camera: GlobeCameraState) => void)
+      | null = null;
+    private onPerformanceSnapshot:
+      | ((snapshot: RenderingPerformanceSnapshot) => void)
       | null = null;
     private onSelectionChange:
       | ((selection: GlobeSelection) => void)
@@ -586,6 +594,10 @@ export class GlobeRenderingContext {
         this.scene = new THREE.Scene();
         this.camera = createCamera();
         this.renderer = createRenderer();
+        this.performanceMonitor =
+            new RenderingPerformanceMonitor(
+            this.renderer,
+        );
 
         const lighting = createLighting();
         const earth = createEarth();
@@ -766,6 +778,14 @@ export class GlobeRenderingContext {
         | null,
     ): void {
       this.onCameraChange = handler;
+    }
+
+    setPerformanceSnapshotHandler(
+      handler:
+        | ((snapshot: RenderingPerformanceSnapshot) => void)
+        | null,
+    ): void {
+      this.onPerformanceSnapshot = handler;
     }
 
     setSelection(
@@ -956,9 +976,7 @@ export class GlobeRenderingContext {
 
         if (this.solarUpdateAccumulator >= 60) {
             this.solarTerminator.update(new Date());
-
             this.updateSolarLighting();
-
             this.solarUpdateAccumulator = 0;
         }
 
@@ -966,7 +984,21 @@ export class GlobeRenderingContext {
 
         this.controls.update();
 
-        this.renderer.render(this.scene, this.camera);
+        this.renderer.render(
+          this.scene,
+          this.camera,
+        );
+
+        const performanceSnapshot =
+          this.performanceMonitor.update(
+            deltaSeconds,
+        );
+
+        if (performanceSnapshot) {
+            this.onPerformanceSnapshot?.(
+                 performanceSnapshot,
+            );
+        }
 
         this.animationFrameId = window.requestAnimationFrame(this.render);
     };
