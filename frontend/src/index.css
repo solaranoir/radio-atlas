@@ -475,3 +475,33 @@ input {
         grid-template-rows: 4.25rem minmax(0, 1fr) 9rem;
     }
 }
+
+/* Mobile */
+
+@media (max-width: 767px) {
+    .radio-atlas {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows:
+            auto
+            minmax(24rem, 60vh)
+            auto
+            auto
+            auto;
+    .radio-atlas {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .radio-atlas__sidebar,
+    .radio-atlas__right-panel {
+        min-height: auto;
+        overflow: visible;
+    }
+        grid-template-areas:
+            "header"
+            "workspace"
+            "sidebar"
+            "right"
+            "bottom";
+    }
+}
