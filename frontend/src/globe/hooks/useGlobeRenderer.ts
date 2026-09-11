@@ -77,13 +77,6 @@ export function useGlobeRenderer(
     }, [onPerformanceSnapshot]);
 
     useEffect(() => {
-      renderingContextRef.current
-        ?.setReducedMotion(  
-          reducedMotion, 
-        );
-    }, [reducedMotion]);
-
-    useEffect(() => {
         if (containerRef.current === null) {
             return;
         }
@@ -119,6 +112,13 @@ export function useGlobeRenderer(
             renderingContextRef.current = null;
         };
     }, [containerRef]);
+
+    useEffect(() => {
+      renderingContextRef.current
+        ?.setReducedMotion(
+          reducedMotion,
+        );
+    }, [reducedMotion]);
 
     useEffect(() => {
         if (!solarWeather) {

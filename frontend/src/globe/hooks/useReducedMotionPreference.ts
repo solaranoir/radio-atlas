@@ -24,17 +24,18 @@ export function useReducedMotionPreference(): boolean {
   const [
     systemPrefersReducedMotion,
     setSystemPrefersReducedMotion,
-  ] = useState(false);
+  ] = useState(
+    () =>
+      window.matchMedia(
+        REDUCED_MOTION_QUERY,
+      ).matches,
+  );
 
   useEffect(() => {
     const mediaQuery =
       window.matchMedia(
         REDUCED_MOTION_QUERY,
       );
-
-    setSystemPrefersReducedMotion(
-      mediaQuery.matches,
-    );
 
     const handleChange = (
       event: MediaQueryListEvent,

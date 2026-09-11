@@ -43,67 +43,80 @@ export function MotionPreferenceControl() {
   }
 
   return (
-    <div
+    <fieldset
       className="motion-preference-control"
-      aria-label="Animation"
     >
-      <div className="control-section__heading">
+      <legend
+        className="control-section__heading"
+      >
         Animation
+      </legend>
+
+      <div className="motion-preference-control__options">
+        <label className="motion-preference-control__option">
+          <input
+            type="radio"
+            name="motion-preference"
+            value="system"
+            checked={
+              motionPreference ===
+              "system"
+            }
+            onChange={() =>
+              handleChange(
+                "system",
+              )
+            }
+          />
+
+          <span>
+            System preference
+          </span>
+        </label>
+
+        <label className="motion-preference-control__option">
+          <input
+            type="radio"
+            name="motion-preference"
+            value="reduced"
+            checked={
+              motionPreference ===
+              "reduced"
+            }
+            onChange={() =>
+              handleChange(
+                "reduced",
+              )
+            }
+          />
+
+          <span>
+            Reduce motion
+          </span>
+        </label>
+
+        <label className="motion-preference-control__option">
+          <input
+            type="radio"
+            name="motion-preference"
+            value="full"
+            checked={
+              motionPreference ===
+              "full"
+            }
+            onChange={() =>
+              handleChange(
+                "full",
+              )
+            }
+          />
+
+          <span>
+            Full motion
+          </span>
+        </label>
       </div>
-
-      <label>
-        <input
-          type="radio"
-          name="motion-preference"
-          value="system"
-          checked={
-            motionPreference ===
-            "system"
-          }
-          onChange={() =>
-            handleChange(
-              "system",
-            )
-          }
-        />
-        System preference
-      </label>
-
-      <label>
-        <input
-          type="radio"
-          name="motion-preference"
-          value="reduced"
-          checked={
-            motionPreference ===
-            "reduced"
-          }
-          onChange={() =>
-            handleChange(
-              "reduced",
-            )
-          }
-        />
-        Reduce motion
-      </label>
-
-      <label>
-        <input
-          type="radio"
-          name="motion-preference"
-          value="full"
-          checked={
-            motionPreference ===
-            "full"
-          }
-          onChange={() =>
-            handleChange(
-              "full",
-            )
-          }
-        />
-        Full motion
-      </label>
-    </div>
+    </fieldset>
   );
+
 }
