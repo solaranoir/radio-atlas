@@ -87,6 +87,7 @@ export class GlobeRenderingContext {
       | ((selection: GlobeSelection) => void)
       | null = null;
     private pointerDownPosition: THREE.Vector2 | null = null;
+    private reducedMotion = false;
     private solarUpdateAccumulator = 0;
     private selectedObject: THREE.Object3D | null = null;
 
@@ -830,6 +831,13 @@ export class GlobeRenderingContext {
       this.onSelectionChange = handler;
     }
 
+   setReducedMotion(
+     reducedMotion: boolean,
+   ): void {
+     this.reducedMotion =
+       reducedMotion;
+   }
+
     setLayerVisible(id: GlobeLayerId, visible: boolean): void {
         if (visible) {
             this.layerController.enable(id);
@@ -967,11 +975,21 @@ export class GlobeRenderingContext {
 
         const elapsedSeconds = this.clock.elapsedTime;
 
-        this.signalArcs.update(deltaSeconds);
-        this.spotDensity.update(deltaSeconds);
+        this.signalArcs.update(
+          deltaSeconds,
+          this.reducedMotion,
+        );
+
+        this.spotDensity.update(
+          deltaSeconds,
+          this.reducedMotion,
+        );
+
         this.predictionPaths.update(
           deltaSeconds,
+          this.reducedMotion,
         );
+
         this.solarUpdateAccumulator += deltaSeconds;
 
         if (this.solarUpdateAccumulator >= 60) {
@@ -980,7 +998,10 @@ export class GlobeRenderingContext {
             this.solarUpdateAccumulator = 0;
         }
 
-        this.anomalies.update(elapsedSeconds);
+        this.anomalies.update(
+          elapsedSeconds,
+          this.reducedMotion,
+        );
 
         this.controls.update();
 

@@ -29,6 +29,7 @@ export function useGlobeRenderer(
   onPerformanceSnapshot?: (
     snapshot: RenderingPerformanceSnapshot,
   ) => void,
+  reducedMotion = false,
 ): {
   resetCamera: () => void;
   setLayerVisible: (
@@ -111,6 +112,13 @@ export function useGlobeRenderer(
             renderingContextRef.current = null;
         };
     }, [containerRef]);
+
+    useEffect(() => {
+      renderingContextRef.current
+        ?.setReducedMotion(
+          reducedMotion,
+        );
+    }, [reducedMotion]);
 
     useEffect(() => {
         if (!solarWeather) {

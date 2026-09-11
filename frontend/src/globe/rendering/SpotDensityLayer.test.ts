@@ -119,4 +119,48 @@ describe("SpotDensityLayer", () => {
 
     layer.dispose();
   });
+
+  it(
+    "keeps markers static when reduced motion is enabled",
+    () => {
+      const layer =
+        new SpotDensityLayer();
+
+      layer.setRegions([
+        highDensityRegion,
+      ]);
+
+      const marker =
+        layer.group.children[0] as THREE.Mesh<
+          THREE.CircleGeometry,
+          THREE.MeshBasicMaterial
+        >;
+
+      layer.update(
+        0.5,
+        true,
+      );
+
+      const firstScale =
+        marker.scale.x;
+
+      const firstOpacity =
+        marker.material.opacity;
+
+      layer.update(
+        0.5,
+        true,
+      );
+
+      expect(
+        marker.scale.x,
+      ).toBe(firstScale);
+
+      expect(
+        marker.material.opacity,
+      ).toBe(firstOpacity);
+
+      layer.dispose();
+    },
+  );
 });

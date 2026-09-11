@@ -155,4 +155,55 @@ describe("PredictionPathLayer", () => {
 
     layer.dispose();
   });
+
+  it(
+    "shows appearing paths immediately when reduced motion is enabled",
+    () => {
+
+      const reducedMotionLayer =
+        new PredictionPathLayer();
+
+      reducedMotionLayer.setPaths([
+        prediction,
+      ]);
+
+      const reducedMotionLine =
+        reducedMotionLayer.group.children[0] as THREE.Line<
+          THREE.BufferGeometry,
+          THREE.LineDashedMaterial
+        >;
+
+      reducedMotionLayer.update(
+        0.016,
+        true,
+      );
+
+      const reducedMotionOpacity =
+        reducedMotionLine.material.opacity;
+
+      const normalLayer =
+        new PredictionPathLayer();
+
+      normalLayer.setPaths([
+        prediction,
+      ]);
+
+      const normalLine =
+        normalLayer.group.children[0] as THREE.Line<
+          THREE.BufferGeometry,
+          THREE.LineDashedMaterial
+        >;
+
+      normalLayer.update(0.6);
+
+      expect(
+        reducedMotionOpacity,
+      ).toBe(
+        normalLine.material.opacity,
+      );
+
+      reducedMotionLayer.dispose();
+      normalLayer.dispose();
+    },
+  );
 });

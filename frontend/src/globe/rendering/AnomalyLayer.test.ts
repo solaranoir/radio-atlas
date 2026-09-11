@@ -3,6 +3,7 @@ import {
   expect,
   it,
 } from "vitest";
+import * as THREE from "three";
 
 import {
   AnomalyLayer,
@@ -117,4 +118,61 @@ describe("AnomalyLayer", () => {
 
     layer.dispose();
   });
+
+  it(
+    "keeps anomaly visuals static when reduced motion is enabled",
+    () => {
+      const layer =
+        new AnomalyLayer();
+
+      layer.setAnomalies([
+        anomaly,
+      ]);
+
+      const anomalyGroup =
+        layer.group.children[0] as THREE.Group;
+
+      const core =
+        anomalyGroup.children[0] as THREE.Mesh;
+
+      const ring =
+        anomalyGroup.children[1] as THREE.Mesh<
+          THREE.RingGeometry,
+          THREE.MeshBasicMaterial
+        >;
+
+      layer.update(
+        1,
+        true,
+      );
+
+      const firstCoreScale =
+        core.scale.x;
+
+      const firstRingScale =
+        ring.scale.x;
+
+      const firstRingOpacity =
+        ring.material.opacity;
+
+      layer.update(
+        5,
+        true,
+      );
+
+      expect(
+        core.scale.x,
+      ).toBe(firstCoreScale);
+
+      expect(
+        ring.scale.x,
+      ).toBe(firstRingScale);
+
+      expect(
+        ring.material.opacity,
+      ).toBe(firstRingOpacity);
+
+      layer.dispose();
+      },
+   );
 });

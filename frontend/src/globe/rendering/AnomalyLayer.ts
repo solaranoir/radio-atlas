@@ -74,6 +74,7 @@ export class AnomalyLayer {
 
   update(
     elapsedSeconds: number,
+    reducedMotion = false,
   ): void {
     for (
       const visual
@@ -83,6 +84,41 @@ export class AnomalyLayer {
         mapAnomalyVisuals(
           visual.severity,
         );
+
+      if (reducedMotion) {
+        const staticCycle = 0.5;
+
+        const staticPulse =
+          Math.sin(
+            staticCycle *
+              Math.PI,
+          );
+
+        visual.core.scale.setScalar(
+          visuals.scale *
+            (
+              0.9 +
+              staticPulse * 0.2
+            ),
+        );
+
+        visual.ring.scale.setScalar(
+          visuals.scale *
+            (
+              0.8 +
+              staticCycle * 1.4
+            ),
+        );
+
+        visual.ring.material.opacity =
+          visuals.opacity *
+          (
+            1 - staticCycle
+          ) *
+          0.75;
+
+        continue;
+      }
 
       const cycle =
         (
