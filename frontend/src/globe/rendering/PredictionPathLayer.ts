@@ -63,11 +63,40 @@ export class PredictionPathLayer {
     }
   }
 
-  update(deltaSeconds: number): void {
+  update(
+    deltaSeconds: number,
+    reducedMotion = false,
+  ): void {
+
     for (const [
       id,
       visual,
     ] of this.paths) {
+
+     if (reducedMotion) {
+        if (
+          visual.state ===
+            "disappearing"
+        ) {
+          this.group.remove(
+            visual.line,
+          );
+
+          visual.line.geometry.dispose();
+          visual.line.material.dispose();
+
+          this.paths.delete(id);
+          continue;
+        }
+
+        visual.line.material.opacity =
+          visual.targetOpacity;
+
+        visual.state = "steady";
+
+        continue;
+      }
+
       const result =
         advanceOpeningDissolve(
           visual.line.material.opacity,

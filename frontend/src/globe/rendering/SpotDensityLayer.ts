@@ -69,18 +69,15 @@ export class SpotDensityLayer {
     }
   }
 
-  update(deltaSeconds: number): void {
+  update(
+    deltaSeconds: number,
+    reducedMotion = false,
+  ): void {
+
     for (
       const marker
       of this.markers.values()
     ) {
-      const elapsedTime =
-        (
-          marker.userData.elapsedTime as number
-        ) + deltaSeconds;
-
-      marker.userData.elapsedTime =
-        elapsedTime;
 
       const baseOpacity =
         marker.userData.baseOpacity as number;
@@ -88,6 +85,33 @@ export class SpotDensityLayer {
       const pulseAmplitude =
         marker.userData.pulseAmplitude as number;
 
+      if (reducedMotion) {
+        const staticPulse = 0.5;
+
+        marker.scale.setScalar(
+          1 +
+            staticPulse *
+              pulseAmplitude,
+        );
+
+        marker.material.opacity =
+           baseOpacity *
+          (
+            0.75 +
+             0.25 * staticPulse
+          );
+
+        continue;
+      }
+
+      const elapsedTime =
+        (  
+          marker.userData.elapsedTime as number
+        ) + deltaSeconds;
+            
+      marker.userData.elapsedTime =
+        elapsedTime;
+       
       const pulseSpeed =
         marker.userData.pulseSpeed as number;
 

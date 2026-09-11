@@ -266,4 +266,36 @@ describe("SignalArcCollection", () => {
     },
   );
 
+  it(
+    "applies target opacity immediately when reduced motion is enabled",
+    () => {
+      const collection =
+        new SignalArcCollection();
+
+      collection.setPaths([
+        pathOne,
+        pathTwo,
+      ]);
+
+      const arc =
+        collection.group.children[0] as THREE.Line<
+          THREE.BufferGeometry,
+          THREE.LineBasicMaterial
+        >;
+
+      arc.material.opacity = 0.1;
+      arc.userData.targetOpacity = 0.8;
+
+      collection.update(
+        0.016,
+        true,
+      );
+
+      expect(
+        arc.material.opacity,
+      ).toBe(0.8);
+
+      collection.dispose();
+    },
+  );
 });

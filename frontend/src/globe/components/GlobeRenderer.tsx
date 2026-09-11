@@ -9,6 +9,9 @@ import {
 import { useAnomalies } from "../hooks/useAnomalies";
 import { useGlobeRenderer } from "../hooks/useGlobeRenderer";
 import {
+  useReducedMotionPreference,
+} from "../hooks/useReducedMotionPreference";
+import {
   useObservations,
 } from "../hooks/useObservations";
 import { useSolarWeather } from "../hooks/useSolarWeather";
@@ -29,9 +32,15 @@ import {
   InformationPanel,
 } from "./InformationPanel";
 import { LayerControls } from "./LayerControls";
+import {
+  MotionPreferenceControl,
+} from "./MotionPreferenceControl";
 
 export function GlobeRenderer() {
     const containerRef = useRef<HTMLDivElement | null>(null);
+
+    const reducedMotion =
+      useReducedMotionPreference();
 
     const { snapshot: solarWeather } = useSolarWeather();
 
@@ -126,6 +135,7 @@ export function GlobeRenderer() {
       setSelection,
       setCamera,
       handlePerformanceSnapshot,
+      reducedMotion,
     );
 
     return (
@@ -157,6 +167,9 @@ export function GlobeRenderer() {
              </button>
            </section>
 
+          <section className="control-section">
+            <MotionPreferenceControl />
+          </section>
           <section className="control-section">
             <FilterPanel
               filters={filters}

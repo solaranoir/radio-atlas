@@ -14,6 +14,12 @@ import type {
   GlobeSelection,
 } from "../types/globeSelection";
 
+
+export type MotionPreference =
+  | "system"
+  | "reduced"
+  | "full";
+
 export interface GlobeCameraState {
   position: {
     x: number;
@@ -32,6 +38,7 @@ export interface GlobeState {
   selection: GlobeSelection;
   activeLayers: ReadonlySet<GlobeLayerId>;
   filters: GlobeFilters;
+  motionPreference: MotionPreference;
 
   setCamera: (
     camera: GlobeCameraState,
@@ -50,6 +57,10 @@ export interface GlobeState {
     filters: GlobeFilters,
   ) => void;
 
+  setMotionPreference: (
+    motionPreference: MotionPreference,
+  ) => void;
+
   resetGlobeState: () => void;
 }
 
@@ -58,6 +69,7 @@ export interface GlobeStateValues {
   selection: GlobeSelection;
   activeLayers: ReadonlySet<GlobeLayerId>;
   filters: GlobeFilters;
+  motionPreference: MotionPreference;
 }
 
 export function createInitialGlobeState(): GlobeStateValues {
@@ -69,6 +81,7 @@ export function createInitialGlobeState(): GlobeStateValues {
     filters: {
       ...DEFAULT_GLOBE_FILTERS,
     },
+    motionPreference: "system",
   };
 }
 
@@ -104,6 +117,12 @@ export const useGlobeStore =
 
     setFilters: (filters) => {
       set({ filters });
+    },
+
+    setMotionPreference: (
+      motionPreference,
+    ) => {
+      set({ motionPreference });
     },
 
     resetGlobeState: () => {

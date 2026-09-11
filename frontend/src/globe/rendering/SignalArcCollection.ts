@@ -53,8 +53,11 @@ export class SignalArcCollection {
       this.arcs.delete(id);
     }
   }
+  update(
+    deltaSeconds: number,
+    reducedMotion = false,
+  ): void {
 
-  update(deltaSeconds: number): void {
     for (const arc of this.arcs.values()) {
       if (
         arc.userData.isSelected ===
@@ -71,6 +74,13 @@ export class SignalArcCollection {
       if (
         targetOpacity === undefined
       ) {
+        continue;
+      }
+
+      if (reducedMotion) {
+        arc.material.opacity =
+          targetOpacity;
+
         continue;
       }
 

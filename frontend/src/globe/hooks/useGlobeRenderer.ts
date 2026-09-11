@@ -29,6 +29,7 @@ export function useGlobeRenderer(
   onPerformanceSnapshot?: (
     snapshot: RenderingPerformanceSnapshot,
   ) => void,
+  reducedMotion = false,
 ): {
   resetCamera: () => void;
   setLayerVisible: (
@@ -74,6 +75,13 @@ export function useGlobeRenderer(
           onPerformanceSnapshot ?? null,
         );
     }, [onPerformanceSnapshot]);
+
+    useEffect(() => {
+      renderingContextRef.current
+        ?.setReducedMotion(  
+          reducedMotion, 
+        );
+    }, [reducedMotion]);
 
     useEffect(() => {
         if (containerRef.current === null) {
