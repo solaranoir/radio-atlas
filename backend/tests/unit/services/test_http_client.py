@@ -45,6 +45,73 @@ async def test_get_json_invalid_json() -> None:
         with pytest.raises(HttpJsonDecodeError):
             await client.get_json("https://example.test/data")
 
+@pytest.mark.asyncio
+async def test_invalid_json_retries_then_succeeds() -> None:
+    attempts = 0
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+
+        if attempts == 1:
+            return httpx.Response(
+                200,
+                content=b'{"status":',
+                request=request,
+            )
+
+        return httpx.Response(
+            200,
+            json={"status": "ok"},
+            request=request,
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    async with httpx.AsyncClient(transport=transport) as raw_client:
+        client = JsonHttpClient(
+            client=raw_client,
+            max_attempts=3,
+            backoff_seconds=0,
+        )
+
+        payload = await client.get_json(
+            "https://example.test/data",
+        )
+
+    assert attempts == 2
+    assert payload == {"status": "ok"}
+
+
+@pytest.mark.asyncio
+async def test_invalid_json_raises_after_max_attempts() -> None:
+    attempts = 0
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+
+        return httpx.Response(
+            200,
+            content=b'{"status":',
+            request=request,
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    async with httpx.AsyncClient(transport=transport) as raw_client:
+        client = JsonHttpClient(
+            client=raw_client,
+            max_attempts=3,
+            backoff_seconds=0,
+        )
+
+        with pytest.raises(HttpJsonDecodeError):
+            await client.get_json(
+                "https://example.test/data",
+            )
+
+    assert attempts == 3
 
 @pytest.mark.asyncio
 async def test_non_retryable_400_fails_immediately() -> None:
