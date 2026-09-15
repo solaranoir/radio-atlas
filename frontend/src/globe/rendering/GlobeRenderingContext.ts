@@ -381,31 +381,44 @@ export class GlobeRenderingContext {
         this.handleSelection(event);
     };
 
-    private handleSelection(event: PointerEvent): void {
-        const pointer = pointerToNormalizedDeviceCoordinates(
-            event.clientX,
-            event.clientY,
-            this.renderer.domElement,
-        );
-
+    private selectAtNormalizedCoordinates(
+        x: number,
+        y: number,
+    ): void {
         this.raycaster.setFromCamera(
-            new THREE.Vector2(pointer.x, pointer.y),
+            new THREE.Vector2(x, y),
             this.camera,
         );
 
-        const intersections = this.raycaster
-            .intersectObjects(this.scene.children, true)
-            .filter(({ object }) => isObjectVisible(object));
+        const intersections =
+            this.raycaster
+                .intersectObjects(
+                    this.scene.children,
+                    true,
+                )
+                .filter(
+                    ({ object }) =>
+                        isObjectVisible(
+                            object,
+                        ),
+                );
 
-        const stationIntersection = intersections.find(
-            ({ object }) => object.userData.station,
-        );
+        const stationIntersection =
+            intersections.find(
+                ({ object }) =>
+                    object.userData.station,
+            );
 
-        const signalPathIntersection = intersections.find(
-            ({ object }) => object.userData.signalPath,
-        );
+        const signalPathIntersection =
+            intersections.find(
+                ({ object }) =>
+                    object.userData
+                        .signalPath,
+            );
 
-        const selectable = stationIntersection ?? signalPathIntersection;
+        const selectable =
+            stationIntersection ??
+            signalPathIntersection;
 
         if (!selectable) {
             this.clearSelection();
@@ -413,7 +426,25 @@ export class GlobeRenderingContext {
             return;
         }
 
-        this.selectObject(selectable.object);
+        this.selectObject(
+            selectable.object,
+        );
+    }
+
+    private handleSelection(
+        event: PointerEvent,
+    ): void {
+        const pointer =
+            pointerToNormalizedDeviceCoordinates(
+                event.clientX,
+                event.clientY,
+                this.renderer.domElement,
+            );
+
+        this.selectAtNormalizedCoordinates(
+            pointer.x,
+            pointer.y,
+        );
     }
 
     private handlePointerMove = (event: PointerEvent): void => {
@@ -860,8 +891,98 @@ export class GlobeRenderingContext {
         return this.layerController.isVisible(id);
     }
 
+    selectAtViewportCenter(): void {
+        this.selectAtNormalizedCoordinates(
+            0,
+            0,
+        );
+    }
+
+    clearCurrentSelection(): void {
+        this.clearSelection();
+    }
+
     resetCamera(): void {
         this.controls.reset();
+        this.controls.update();
+    }
+
+    rotateCamera(
+        horizontalRadians: number,
+        verticalRadians: number,
+    ): void {
+        const offset =
+            this.camera.position
+                .clone()
+                .sub(
+                    this.controls.target,
+                );
+
+        const spherical =
+            new THREE.Spherical()
+                .setFromVector3(
+                    offset,
+                );
+
+        spherical.theta +=
+            horizontalRadians;
+
+        spherical.phi +=
+            verticalRadians;
+
+        spherical.makeSafe();
+
+        offset.setFromSpherical(
+            spherical,
+        );
+
+        this.camera.position.copy(
+            this.controls.target
+                .clone()
+                .add(offset),
+        );
+
+        this.camera.lookAt(
+            this.controls.target,
+        );
+
+        this.controls.update();
+    }
+
+    zoomCamera(
+        scale: number,
+    ): void {
+        const offset =
+            this.camera.position
+                .clone()
+                .sub(
+                    this.controls.target,
+                );
+
+        const currentDistance =
+            offset.length();
+
+        const nextDistance =
+            THREE.MathUtils.clamp(
+                currentDistance * scale,
+                this.controls.minDistance,
+                this.controls.maxDistance,
+            );
+
+        offset.setLength(
+            nextDistance,
+        );
+
+        this.camera.position.copy(
+            this.controls.target
+                .clone()
+                .add(offset),
+        );
+
+        this.camera.lookAt(
+            this.controls.target,
+        );
+
         this.controls.update();
     }
 
