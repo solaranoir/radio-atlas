@@ -92,6 +92,68 @@ export function GlobeRenderer() {
       );
     };
 
+    const handleGlobeKeyDown = (
+      event: React.KeyboardEvent<HTMLDivElement>,
+    ): void => {
+      const rotationStep =
+        Math.PI / 36;
+
+      switch (event.key) {
+        case "ArrowLeft":
+          event.preventDefault();
+          rotateCamera(
+            -rotationStep,
+            0,
+          );
+          break;
+
+        case "ArrowRight":
+          event.preventDefault();
+          rotateCamera(
+            rotationStep,
+            0,
+          );
+          break;
+
+        case "ArrowUp":
+          event.preventDefault();
+          rotateCamera(
+            0,
+            -rotationStep,
+          );
+          break;
+
+        case "ArrowDown":
+          event.preventDefault();
+          rotateCamera(
+            0,
+            rotationStep,
+          );
+          break;
+
+        case "+":
+        case "=":
+          event.preventDefault();
+          zoomCamera(0.9);
+          break;
+
+        case "-":
+          event.preventDefault();
+          zoomCamera(1.1);
+          break;
+
+        case "Enter":
+          event.preventDefault();
+          selectAtViewportCenter();
+          break;
+
+        case "Escape":
+          event.preventDefault();
+          clearCurrentSelection();
+          break;
+        }
+    };
+
     const {
       observations,
     } = useObservations();
@@ -127,6 +189,10 @@ export function GlobeRenderer() {
     const {
       resetCamera,
       setLayerVisible,
+      rotateCamera,
+      zoomCamera,
+      selectAtViewportCenter,
+      clearCurrentSelection,
     } = useGlobeRenderer(
       containerRef,
       solarWeather,
@@ -190,6 +256,10 @@ export function GlobeRenderer() {
          <div
            ref={containerRef}
            className="globe-container"
+           tabIndex={0}
+           role="application"
+           aria-label="Interactive radio weather globe"
+           onKeyDown={handleGlobeKeyDown}
          />
        }
        rightPanel={

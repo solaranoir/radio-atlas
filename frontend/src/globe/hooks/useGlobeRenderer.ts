@@ -32,6 +32,15 @@ export function useGlobeRenderer(
   reducedMotion = false,
 ): {
   resetCamera: () => void;
+  rotateCamera: (
+    horizontalRadians: number,
+    verticalRadians: number,
+  ) => void;
+  zoomCamera: (
+    scale: number,
+  ) => void;
+  selectAtViewportCenter: () => void;
+  clearCurrentSelection: () => void;
   setLayerVisible: (
     id: GlobeLayerId,
     visible: boolean,
@@ -136,8 +145,42 @@ export function useGlobeRenderer(
         renderingContextRef.current?.resetCamera();
     };
 
+    const rotateCamera = (
+      horizontalRadians: number,
+      verticalRadians: number,
+    ): void => {
+      renderingContextRef.current
+        ?.rotateCamera(
+          horizontalRadians,
+          verticalRadians,
+        );
+    };
+
+    const zoomCamera = (
+      scale: number,
+    ): void => {
+      renderingContextRef.current
+        ?.zoomCamera(scale);
+    };
+
+    const selectAtViewportCenter =
+        (): void => {
+            renderingContextRef.current
+                ?.selectAtViewportCenter();
+        };
+
+    const clearCurrentSelection =
+        (): void => {
+            renderingContextRef.current
+                ?.clearCurrentSelection();
+        };
+
     return {
         resetCamera,
+        rotateCamera,
+        zoomCamera,
+        selectAtViewportCenter,
+        clearCurrentSelection,
         setLayerVisible,
     };
 }

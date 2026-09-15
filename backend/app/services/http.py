@@ -92,7 +92,20 @@ class JsonHttpClient:
                 try:
                     return response.json()
                 except ValueError as exc:
-                    raise HttpJsonDecodeError(f"Response from {url} was not valid JSON") from exc
+                    logger.warning(
+                        "HTTP response contained invalid JSON",
+                        extra={
+                            "operation": "http_get",
+                            "url": url,
+                            "attempt": attempt,
+                            "max_attempts": self._max_attempts,
+                        },
+                    )
+
+                    if attempt == self._max_attempts:
+                        raise HttpJsonDecodeError(
+                            f"Response from {url} was not valid JSON"
+                        ) from exc
             except httpx.TimeoutException as exc:
                 logger.warning(
                     "HTTP request timed out",

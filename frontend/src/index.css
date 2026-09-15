@@ -157,6 +157,32 @@ input {
     height: 100%;
 }
 
+.globe-container::after {
+    content: "";
+
+    position: absolute;
+    inset: 0;
+
+    z-index: 10;
+
+    border: 3px solid transparent;
+
+    pointer-events: none;
+}
+
+.globe-container:focus::after {
+    border-color: #79c7ff;
+
+    box-shadow:
+        inset 0 0 0 2px #ffffff,
+        inset 0 0 0 5px rgba(121, 199, 255, 0.3);
+}
+
+.globe-container:focus,
+.globe-container:focus-visible {
+    outline: none;
+}
+
 /* Branding */
 
 .app-brand {
@@ -228,6 +254,12 @@ input {
     margin: 0;
 
     accent-color: #67b7ef;
+}
+
+.layer-controls label:focus-within {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+    border-radius: 4px;
 }
 
 /* Buttons */
@@ -451,6 +483,15 @@ input {
   text-align: right;
 }
 
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+}
+
+
 /* Narrower desktop */
 
 @media (max-width: 1099px) {
@@ -465,6 +506,46 @@ input {
         padding: 0.75rem;
     }
 }
+
+.motion-preference-control {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+
+.motion-preference-control__options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.motion-preference-control__option {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: 100%;
+    cursor: pointer;
+    line-height: 1.25;
+}
+
+.motion-preference-control__option input {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+.motion-preference-control__option span {
+    min-width: 0;
+}
+
+.motion-preference-control__option:focus-within {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+
+
 
 /* Standard and wide desktop */
 
