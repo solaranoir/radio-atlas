@@ -45,6 +45,7 @@ async def test_get_json_invalid_json() -> None:
         with pytest.raises(HttpJsonDecodeError):
             await client.get_json("https://example.test/data")
 
+
 @pytest.mark.asyncio
 async def test_invalid_json_retries_then_succeeds() -> None:
     attempts = 0
@@ -112,6 +113,7 @@ async def test_invalid_json_raises_after_max_attempts() -> None:
             )
 
     assert attempts == 3
+
 
 @pytest.mark.asyncio
 async def test_non_retryable_400_fails_immediately() -> None:
