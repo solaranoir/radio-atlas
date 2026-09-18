@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:visual": "playwright test tests/visual",
-    "test:visual:update": "playwright test tests/visual --update-snapshots"
+    "test:visual:update": "playwright test tests/visual --update-snapshots",
+    "test:e2e": "playwright test tests/e2e",
+    "test:e2e:debug": "playwright test tests/e2e --debug"
   },
   "dependencies": {
     "react": "^19.2.8",

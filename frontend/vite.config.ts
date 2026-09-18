@@ -4,6 +4,11 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
     plugins: [react()],
     test: {
-        exclude: ["**/node_modules/**", "**/dist/**", "tests/visual/**"],
+        exclude: [
+            "**/node_modules/**",
+            "**/dist/**",
+            "tests/visual/**",
+            "tests/e2e/**",
+        ],
     },
 });
