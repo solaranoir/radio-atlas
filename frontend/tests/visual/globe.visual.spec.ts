@@ -61,108 +61,53 @@ test.describe("Radio Weather Globe visual regression", () => {
         });
     });
 
-   test(
-     "renders the spot density overlay",
-     async ({ page }) => {
-       const globe =
-         getGlobe(page);
+    test("renders the spot density overlay", async ({ page }) => {
+        const globe = getGlobe(page);
 
-       await setLayerVisibility(
-         page,
-         "Solar Weather",
-         false,
-       );
-       await setLayerVisibility(
-         page,
-         "Prediction Paths",
-         false,
-       );
-       await setLayerVisibility(
-         page,
-         "Signal Paths",
-         false,
-       );
-       await setLayerVisibility(
-         page,
-         "Stations",
-         false,
-       );
-       await setLayerVisibility(
-         page,
-         "Anomalies",
-         false,
-       );
-       await setLayerVisibility(
-         page,
-         "Spot Density",
-         true,
-       );
+        await setLayerVisibility(page, "Solar Weather", false);
+        await setLayerVisibility(page, "Prediction Paths", false);
+        await setLayerVisibility(page, "Signal Paths", false);
+        await setLayerVisibility(page, "Stations", false);
+        await setLayerVisibility(page, "Anomalies", false);
+        await setLayerVisibility(page, "Spot Density", true);
 
-       await waitForVisualStability(
-         globe,
-       );
+        await waitForVisualStability(globe);
 
-       await expect(
-         globe,
-       ).toHaveScreenshot(
-         "spot-density-overlay.png",
-         {
-           animations: "disabled",
-         },
-       );
-     },
-   );
+        await expect(globe).toHaveScreenshot("spot-density-overlay.png", {
+            animations: "disabled",
+        });
+    });
 
-  test(
-    "renders reduced-motion animation state",
-    async ({ page }) => {
-      const globe =
-        getGlobe(page);
-
-      await setLayerVisibility(
+    test("animates the spot density overlay with full motion", async ({
         page,
-        "Solar Weather",
-        false,
-      );
-      await setLayerVisibility(
-        page,
-        "Prediction Paths",
-        false,
-      );
-      await setLayerVisibility(
-        page,
-        "Signal Paths",
-        false,
-      );
-      await setLayerVisibility(
-        page,
-        "Stations",
-        false,
-      );
-      await setLayerVisibility(
-        page,
-        "Anomalies",
-        false,
-      );
-      await setLayerVisibility(
-        page,
-        "Spot Density",
-        true,
-      );
+    }) => {
+        const globe = getGlobe(page);
 
-      await waitForVisualStability(
-        globe,
-      );
+        await setLayerVisibility(page, "Solar Weather", false);
+        await setLayerVisibility(page, "Prediction Paths", false);
+        await setLayerVisibility(page, "Signal Paths", false);
+        await setLayerVisibility(page, "Stations", false);
+        await setLayerVisibility(page, "Anomalies", false);
+        await setLayerVisibility(page, "Spot Density", true);
 
-      await expect(
-        globe,
-      ).toHaveScreenshot(
-        "reduced-motion-density.png",
-        {
-          animations: "disabled",
-        },
-      );
-    },
-  );
+        await page
+            .getByRole("radio", {
+                name: "Full motion",
+            })
+            .check();
 
+        await expect(
+            page.getByRole("radio", {
+                name: "Full motion",
+            }),
+        ).toBeChecked();
+
+        const firstFrame = await globe.screenshot();
+
+        await page.waitForTimeout(250);
+
+        const secondFrame = await globe.screenshot();
+
+        expect(secondFrame.equals(firstFrame)).toBe(false);
+    });
 });
