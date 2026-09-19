@@ -206,6 +206,12 @@ For station statistics:
 - each observation contributes once to the receiver aggregate
 - counterpart counts use the opposite callsign
 
+For band statistics:
+
+- observations with `band IS NULL` do not contribute to band rollups
+- band rollups therefore contain only non-null `band` values
+- observations without a resolved band may still contribute to station rollups
+
 ## Rollup Derivation
 
 Hourly and daily rollups are independently derived from raw `spots`.
