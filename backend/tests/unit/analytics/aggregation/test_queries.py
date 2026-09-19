@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from sqlalchemy import Select
 
 from app.analytics.aggregation.queries import (
     build_daily_band_aggregation_query,
@@ -7,8 +8,7 @@ from app.analytics.aggregation.queries import (
     build_hourly_station_aggregation_query,
 )
 
-
-def _build_query():
+def _build_query() -> Select[tuple[object, ...]]:
     return build_hourly_band_aggregation_query(
         start_time=datetime(2026, 9, 1, 12, 0, tzinfo=UTC),
         end_time=datetime(2026, 9, 1, 13, 0, tzinfo=UTC),
