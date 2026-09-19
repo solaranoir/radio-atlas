@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+
 from sqlalchemy import Select
 
 from app.analytics.aggregation.queries import (
