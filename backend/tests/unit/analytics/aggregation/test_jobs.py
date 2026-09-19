@@ -50,6 +50,7 @@ def test_daily_aggregation_executes_three_queries() -> None:
 
     assert session.execute.call_count == 3
 
+
 def test_floor_to_hour_normalizes_to_utc_hour() -> None:
     value = datetime(
         2026,
@@ -93,12 +94,11 @@ def test_floor_to_day_normalizes_to_utc_midnight() -> None:
         tzinfo=UTC,
     )
 
+
 def test_hourly_backfill_processes_each_completed_bucket() -> None:
     session = MagicMock(spec=Session)
 
-    with patch(
-        "app.analytics.aggregation.jobs.run_hourly_aggregation"
-    ) as run_hourly:
+    with patch("app.analytics.aggregation.jobs.run_hourly_aggregation") as run_hourly:
         run_hourly_backfill(
             session,
             start_time=datetime(2026, 9, 19, 10, 0, tzinfo=UTC),
@@ -107,10 +107,7 @@ def test_hourly_backfill_processes_each_completed_bucket() -> None:
 
     assert run_hourly.call_count == 3
 
-    processed_buckets = [
-        call.kwargs["bucket_start"]
-        for call in run_hourly.call_args_list
-    ]
+    processed_buckets = [call.kwargs["bucket_start"] for call in run_hourly.call_args_list]
 
     assert processed_buckets == [
         datetime(2026, 9, 19, 10, 0, tzinfo=UTC),
@@ -118,12 +115,11 @@ def test_hourly_backfill_processes_each_completed_bucket() -> None:
         datetime(2026, 9, 19, 12, 0, tzinfo=UTC),
     ]
 
+
 def test_daily_backfill_processes_each_completed_bucket() -> None:
     session = MagicMock(spec=Session)
 
-    with patch(
-        "app.analytics.aggregation.jobs.run_daily_aggregation"
-    ) as run_daily:
+    with patch("app.analytics.aggregation.jobs.run_daily_aggregation") as run_daily:
         run_daily_backfill(
             session,
             start_time=datetime(2026, 9, 17, 0, 0, tzinfo=UTC),
@@ -132,10 +128,7 @@ def test_daily_backfill_processes_each_completed_bucket() -> None:
 
     assert run_daily.call_count == 3
 
-    processed_buckets = [
-        call.kwargs["bucket_start"]
-        for call in run_daily.call_args_list
-    ]
+    processed_buckets = [call.kwargs["bucket_start"] for call in run_daily.call_args_list]
 
     assert processed_buckets == [
         datetime(2026, 9, 17, 0, 0, tzinfo=UTC),
@@ -143,12 +136,11 @@ def test_daily_backfill_processes_each_completed_bucket() -> None:
         datetime(2026, 9, 19, 0, 0, tzinfo=UTC),
     ]
 
+
 def test_hourly_incremental_refresh_reprocesses_completed_buckets() -> None:
     session = MagicMock(spec=Session)
 
-    with patch(
-        "app.analytics.aggregation.jobs.run_hourly_backfill"
-    ) as run_backfill:
+    with patch("app.analytics.aggregation.jobs.run_hourly_backfill") as run_backfill:
         run_hourly_incremental_refresh(
             session,
             now=datetime(2026, 9, 19, 14, 37, tzinfo=UTC),
@@ -161,12 +153,11 @@ def test_hourly_incremental_refresh_reprocesses_completed_buckets() -> None:
         end_time=datetime(2026, 9, 19, 14, 0, tzinfo=UTC),
     )
 
+
 def test_daily_incremental_refresh_reprocesses_completed_buckets() -> None:
     session = MagicMock(spec=Session)
 
-    with patch(
-        "app.analytics.aggregation.jobs.run_daily_backfill"
-    ) as run_backfill:
+    with patch("app.analytics.aggregation.jobs.run_daily_backfill") as run_backfill:
         run_daily_incremental_refresh(
             session,
             now=datetime(2026, 9, 19, 14, 37, tzinfo=UTC),

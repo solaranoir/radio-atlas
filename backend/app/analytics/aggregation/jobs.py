@@ -76,6 +76,7 @@ def run_daily_aggregation(
             )
         )
 
+
 def run_hourly_backfill(
     session: Session,
     *,
@@ -91,6 +92,7 @@ def run_hourly_backfill(
             bucket_start=current_bucket,
         )
         current_bucket += timedelta(hours=1)
+
 
 def run_daily_backfill(
     session: Session,
@@ -108,6 +110,7 @@ def run_daily_backfill(
         )
         current_bucket += timedelta(days=1)
 
+
 def run_hourly_incremental_refresh(
     session: Session,
     *,
@@ -122,6 +125,7 @@ def run_hourly_incremental_refresh(
         start_time=start_time,
         end_time=current_hour,
     )
+
 
 def run_daily_incremental_refresh(
     session: Session,

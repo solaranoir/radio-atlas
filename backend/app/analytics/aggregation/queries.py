@@ -7,6 +7,7 @@ from app.infrastructure.database.models import Spot
 
 StationDirection = Literal["sender", "receiver"]
 
+
 def _build_band_aggregation_query(
     *,
     start_time: datetime,
@@ -47,6 +48,7 @@ def _build_band_aggregation_query(
             Spot.mode,
         )
     )
+
 
 def _build_station_aggregation_query(
     *,
@@ -95,6 +97,7 @@ def _build_station_aggregation_query(
         )
     )
 
+
 def build_hourly_band_aggregation_query(
     *,
     start_time: datetime,
@@ -117,6 +120,7 @@ def build_daily_band_aggregation_query(
         end_time=end_time,
         bucket_resolution="day",
     )
+
 
 def build_hourly_station_aggregation_query(
     *,

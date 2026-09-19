@@ -15,12 +15,8 @@ async def test_hourly_job_runs_refresh_and_commits() -> None:
     session = MagicMock(spec=Session)
 
     with (
-        patch(
-            "app.analytics.aggregation.runtime.create_session"
-        ) as create_session,
-        patch(
-            "app.analytics.aggregation.runtime.run_hourly_incremental_refresh"
-        ) as run_refresh,
+        patch("app.analytics.aggregation.runtime.create_session") as create_session,
+        patch("app.analytics.aggregation.runtime.run_hourly_incremental_refresh") as run_refresh,
     ):
         create_session.return_value.__enter__.return_value = session
 
@@ -36,12 +32,8 @@ async def test_daily_job_runs_refresh_and_commits() -> None:
     session = MagicMock(spec=Session)
 
     with (
-        patch(
-            "app.analytics.aggregation.runtime.create_session"
-        ) as create_session,
-        patch(
-            "app.analytics.aggregation.runtime.run_daily_incremental_refresh"
-        ) as run_refresh,
+        patch("app.analytics.aggregation.runtime.create_session") as create_session,
+        patch("app.analytics.aggregation.runtime.run_daily_incremental_refresh") as run_refresh,
     ):
         create_session.return_value.__enter__.return_value = session
 
@@ -50,6 +42,7 @@ async def test_daily_job_runs_refresh_and_commits() -> None:
     run_refresh.assert_called_once()
     assert run_refresh.call_args.args[0] is session
     session.commit.assert_called_once_with()
+
 
 @pytest.mark.asyncio
 async def test_aggregation_runtime_starts_schedules() -> None:

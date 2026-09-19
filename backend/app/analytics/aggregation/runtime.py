@@ -25,6 +25,7 @@ async def run_daily_job() -> None:
         )
         session.commit()
 
+
 async def run_aggregation_runtime() -> None:
     await run_aggregation_schedules(
         run_hourly_job,

@@ -54,6 +54,7 @@ def test_hourly_band_query_calculates_expected_metrics() -> None:
     assert "max(" in compiled.lower()
     assert "avg(" in compiled.lower()
 
+
 def test_daily_band_query_uses_day_bucket() -> None:
     query = build_daily_band_aggregation_query(
         start_time=datetime(2026, 9, 1, 0, 0, tzinfo=UTC),
@@ -69,6 +70,7 @@ def test_daily_band_query_uses_day_bucket() -> None:
     )
 
     assert "date_trunc('day'" in compiled
+
 
 def test_hourly_sender_station_query_uses_sender_identity() -> None:
     query = build_hourly_station_aggregation_query(
@@ -100,6 +102,7 @@ def test_hourly_receiver_station_query_uses_receiver_identity() -> None:
     assert "max(spots.receiver_station_id) AS station_id" in compiled
     assert "spots.receiver_callsign AS callsign" in compiled
     assert "distinct(spots.sender_callsign)" in compiled.lower()
+
 
 def test_daily_station_query_uses_day_bucket() -> None:
     query = build_daily_station_aggregation_query(
