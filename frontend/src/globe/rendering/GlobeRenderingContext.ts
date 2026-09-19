@@ -9,11 +9,11 @@ import { createEarth } from "./createEarth";
 import { createLighting } from "./createLighting";
 import { createNavigationControls } from "./createNavigationControls";
 import { createRenderer } from "./createRenderer";
-import { createStationMarker } from "./createStationMarker";
+import { StationCollection } from "./StationCollection";
 import { PredictionPathLayer } from "./PredictionPathLayer";
 import {
-  RenderingPerformanceMonitor,
-  type RenderingPerformanceSnapshot,
+    RenderingPerformanceMonitor,
+    type RenderingPerformanceSnapshot,
 } from "./RenderingPerformanceMonitor";
 import { SignalArcCollection } from "./SignalArcCollection";
 import { SolarTerminatorLayer } from "./SolarTerminatorLayer";
@@ -30,22 +30,14 @@ import { isObjectVisible } from "../interactions/isObjectVisible";
 import { LayerController } from "../layers/LayerController";
 import { globeLayerRegistry } from "../layers/layerRegistry";
 import type { GlobeLayerId } from "../layers/globeLayer";
-import type {
-  GlobeCameraState,
-} from "../state/globeStore";
+import type { GlobeCameraState } from "../state/globeStore";
 import type { Anomaly } from "../types/anomaly";
-import type {
-  GlobeSelection,
-} from "../types/globeSelection";
+import type { GlobeSelection } from "../types/globeSelection";
 import type { PredictionPath } from "../types/predictionPath";
-import type {
-  SignalPath,
-} from "../types/signalPath";
+import type { SignalPath } from "../types/signalPath";
 import type { SolarWeatherSnapshot } from "../types/solarWeather";
-import type {
-  Station,
-} from "../types/station";
-import { calculateSpotDensity } from "../utilities/spotDensity";
+import type { Station } from "../types/station";
+import type { ObservationVisualization } from "../utilities/observationVisualizationAdapter";
 
 function hasMaterial(object: THREE.Object3D): object is THREE.Object3D & {
     material: THREE.Material;
@@ -69,7 +61,7 @@ export class GlobeRenderingContext {
     private readonly solarTerminator = new SolarTerminatorLayer();
     private readonly solarWeather = new SolarWeatherLayer();
     private readonly spotDensity = new SpotDensityLayer();
-    private readonly stationGroup = new THREE.Group();
+    private readonly stations = new StationCollection();
     private readonly tooltipElement: HTMLDivElement;
     private static readonly CLICK_DRAG_THRESHOLD = 5;
     private readonly performanceMonitor: RenderingPerformanceMonitor;
@@ -77,24 +69,17 @@ export class GlobeRenderingContext {
     private animationFrameId: number | null = null;
     private container: HTMLElement | null = null;
     private hoveredObject: THREE.Object3D | null = null;
-    private onCameraChange:
-      | ((camera: GlobeCameraState) => void)
-      | null = null;
+    private onCameraChange: ((camera: GlobeCameraState) => void) | null = null;
     private onPerformanceSnapshot:
-      | ((snapshot: RenderingPerformanceSnapshot) => void)
-      | null = null;
-    private onSelectionChange:
-      | ((selection: GlobeSelection) => void)
-      | null = null;
+        ((snapshot: RenderingPerformanceSnapshot) => void) | null = null;
+    private onSelectionChange: ((selection: GlobeSelection) => void) | null =
+        null;
     private pointerDownPosition: THREE.Vector2 | null = null;
     private reducedMotion = false;
     private solarUpdateAccumulator = 0;
     private selectedObject: THREE.Object3D | null = null;
 
-
-    private clearSelection(
-      notify = true,
-    ): void {
+    private clearSelection(notify = true): void {
         if (this.selectedObject === null) {
             return;
         }
@@ -129,7 +114,7 @@ export class GlobeRenderingContext {
         this.selectedObject = null;
 
         if (notify) {
-          this.onSelectionChange?.(null);
+            this.onSelectionChange?.(null);
         }
     }
 
@@ -196,7 +181,7 @@ export class GlobeRenderingContext {
     private getLayerObject(id: GlobeLayerId): THREE.Object3D {
         switch (id) {
             case "stations":
-                return this.stationGroup;
+                return this.stations.group;
 
             case "signal-paths":
                 return this.signalArcs.group;
@@ -289,11 +274,7 @@ export class GlobeRenderingContext {
         object.material.opacity = 1;
     }
 
-    private selectObject(
-        object: THREE.Object3D,
-        notify = true,
-    ): void {
-
+    private selectObject(object: THREE.Object3D, notify = true): void {
         if (this.hoveredObject === object) {
             this.clearHover();
         }
@@ -308,8 +289,7 @@ export class GlobeRenderingContext {
             if (notify) {
                 this.onSelectionChange?.({
                     kind: "signal-path",
-                    path: object.userData
-                        .signalPath as SignalPath,
+                    path: object.userData.signalPath as SignalPath,
                 });
             }
 
@@ -333,16 +313,12 @@ export class GlobeRenderingContext {
 
         this.selectedObject = object;
 
-       if (
-           notify &&
-           object.userData.station
-       ) {
-           this.onSelectionChange?.({
-               kind: "station",
-               station: object.userData
-                   .station as Station,
-           });
-       }
+        if (notify && object.userData.station) {
+            this.onSelectionChange?.({
+                kind: "station",
+                station: object.userData.station as Station,
+            });
+        }
     }
 
     private handlePointerDown = (event: PointerEvent): void => {
@@ -381,44 +357,22 @@ export class GlobeRenderingContext {
         this.handleSelection(event);
     };
 
-    private selectAtNormalizedCoordinates(
-        x: number,
-        y: number,
-    ): void {
-        this.raycaster.setFromCamera(
-            new THREE.Vector2(x, y),
-            this.camera,
+    private selectAtNormalizedCoordinates(x: number, y: number): void {
+        this.raycaster.setFromCamera(new THREE.Vector2(x, y), this.camera);
+
+        const intersections = this.raycaster
+            .intersectObjects(this.scene.children, true)
+            .filter(({ object }) => isObjectVisible(object));
+
+        const stationIntersection = intersections.find(
+            ({ object }) => object.userData.station,
         );
 
-        const intersections =
-            this.raycaster
-                .intersectObjects(
-                    this.scene.children,
-                    true,
-                )
-                .filter(
-                    ({ object }) =>
-                        isObjectVisible(
-                            object,
-                        ),
-                );
+        const signalPathIntersection = intersections.find(
+            ({ object }) => object.userData.signalPath,
+        );
 
-        const stationIntersection =
-            intersections.find(
-                ({ object }) =>
-                    object.userData.station,
-            );
-
-        const signalPathIntersection =
-            intersections.find(
-                ({ object }) =>
-                    object.userData
-                        .signalPath,
-            );
-
-        const selectable =
-            stationIntersection ??
-            signalPathIntersection;
+        const selectable = stationIntersection ?? signalPathIntersection;
 
         if (!selectable) {
             this.clearSelection();
@@ -426,25 +380,17 @@ export class GlobeRenderingContext {
             return;
         }
 
-        this.selectObject(
-            selectable.object,
-        );
+        this.selectObject(selectable.object);
     }
 
-    private handleSelection(
-        event: PointerEvent,
-    ): void {
-        const pointer =
-            pointerToNormalizedDeviceCoordinates(
-                event.clientX,
-                event.clientY,
-                this.renderer.domElement,
-            );
-
-        this.selectAtNormalizedCoordinates(
-            pointer.x,
-            pointer.y,
+    private handleSelection(event: PointerEvent): void {
+        const pointer = pointerToNormalizedDeviceCoordinates(
+            event.clientX,
+            event.clientY,
+            this.renderer.domElement,
         );
+
+        this.selectAtNormalizedCoordinates(pointer.x, pointer.y);
     }
 
     private handlePointerMove = (event: PointerEvent): void => {
@@ -465,25 +411,25 @@ export class GlobeRenderingContext {
 
         const hoverTarget = findHoverTarget(intersections);
 
-            if (hoverTarget !== this.hoveredObject) {
-                this.clearHover();
+        if (hoverTarget !== this.hoveredObject) {
+            this.clearHover();
 
-                if (hoverTarget) {
-                    this.hoveredObject = hoverTarget;
+            if (hoverTarget) {
+                this.hoveredObject = hoverTarget;
 
-                    this.applyHover(hoverTarget);
-                }
-                if (hoverTarget) {
-                    this.showTooltip(hoverTarget, event);
-                } else {
-                    this.hideTooltip();
-                }
+                this.applyHover(hoverTarget);
             }
+            if (hoverTarget) {
+                this.showTooltip(hoverTarget, event);
+            } else {
+                this.hideTooltip();
+            }
+        }
 
-            this.renderer.domElement.style.cursor = hoverTarget
-                ? "pointer"
-                : "grab";
-        };
+        this.renderer.domElement.style.cursor = hoverTarget
+            ? "pointer"
+            : "grab";
+    };
 
     private handlePointerLeave = (): void => {
         this.clearHover();
@@ -498,33 +444,22 @@ export class GlobeRenderingContext {
         this.directionalLight.position.copy(sunDirection).multiplyScalar(5);
     }
 
-    private getSelectedObjectSelection():
-        GlobeSelection {
-            if (!this.selectedObject) {
-                return null;
-            }
+    private getSelectedObjectSelection(): GlobeSelection {
+        if (!this.selectedObject) {
+            return null;
+        }
 
-            if (
-                this.selectedObject.userData
-                    .signalPath
-        ) {
+        if (this.selectedObject.userData.signalPath) {
             return {
                 kind: "signal-path",
-                path: this.selectedObject
-                    .userData
-                    .signalPath as SignalPath,
+                path: this.selectedObject.userData.signalPath as SignalPath,
             };
         }
 
-        if (
-            this.selectedObject.userData
-                .station
-        ) {
+        if (this.selectedObject.userData.station) {
             return {
                 kind: "station",
-                station: this.selectedObject
-                    .userData
-                    .station as Station,
+                station: this.selectedObject.userData.station as Station,
             };
         }
 
@@ -532,89 +467,52 @@ export class GlobeRenderingContext {
     }
 
     private isSameSelection(
-        first: Exclude<
-            GlobeSelection,
-            null
-        >,
-        second: Exclude<
-            GlobeSelection,
-            null
-        >,
+        first: Exclude<GlobeSelection, null>,
+        second: Exclude<GlobeSelection, null>,
     ): boolean {
         if (first.kind !== second.kind) {
             return false;
         }
 
-        if (
-            first.kind === "station" &&
-            second.kind === "station"
-        ) {
-            return (
-                first.station.id ===
-                second.station.id
-            );
+        if (first.kind === "station" && second.kind === "station") {
+            return first.station.id === second.station.id;
         }
 
-        if (
-            first.kind === "signal-path" &&
-            second.kind === "signal-path"
-        ) {
-            return (
-                first.path.id ===
-                second.path.id
-            );
+        if (first.kind === "signal-path" && second.kind === "signal-path") {
+            return first.path.id === second.path.id;
         }
 
         return false;
     }
 
     private findObjectForSelection(
-        selection: Exclude<
-            GlobeSelection,
-            null
-        >,
+        selection: Exclude<GlobeSelection, null>,
     ): THREE.Object3D | null {
-         let match: THREE.Object3D | null =
-            null;
+        let match: THREE.Object3D | null = null;
 
         this.scene.traverse((object) => {
             if (match) {
-                 return;
+                return;
             }
 
-            if (
-                selection.kind ===
-                    "station" &&
-                object.userData.station
-            ) {
-                const station =
-                    object.userData
-                        .station as Station;
+            if (selection.kind === "station" && object.userData.station) {
+                const station = object.userData.station as Station;
 
-                if (
-                    station.id ===
-                    selection.station.id
-                ) {
+                if (station.id === selection.station.id) {
                     match = object;
                 }
 
-                 return;
+                return;
             }
 
             if (
-                selection.kind ===
-                    "signal-path" &&
+                selection.kind === "signal-path" &&
                 object.userData.signalPath
             ) {
-                const path =
-                    object.userData
-                        .signalPath as SignalPath;
+                const path = object.userData.signalPath as SignalPath;
 
-                if (
-                    path.id ===
-                    selection.path.id
-                ) {
-                     match = object;
+                if (path.id === selection.path.id) {
+                    match = object;
                 }
             }
         });
@@ -626,8 +524,7 @@ export class GlobeRenderingContext {
         this.scene = new THREE.Scene();
         this.camera = createCamera();
         this.renderer = createRenderer();
-        this.performanceMonitor =
-            new RenderingPerformanceMonitor(
+        this.performanceMonitor = new RenderingPerformanceMonitor(
             this.renderer,
         );
 
@@ -666,7 +563,7 @@ export class GlobeRenderingContext {
         this.scene.add(this.solarTerminator.group);
         this.scene.add(this.solarWeather.group);
         this.scene.add(this.predictionPaths.group, this.anomalies.group);
-        this.scene.add(this.stationGroup);
+        this.scene.add(this.stations.group);
 
         this.tooltipElement = document.createElement("div");
 
@@ -691,105 +588,12 @@ export class GlobeRenderingContext {
         this.scene.add(this.signalArcs.group);
         this.scene.add(this.spotDensity.group);
         this.applyLayerState();
+    }
 
-        this.signalArcs.setPaths([
-            {
-                id: "las-vegas-new-york",
-                source: {
-                    latitude: 36.1699,
-                    longitude: -115.1398,
-                },
-                target: {
-                    latitude: 40.7128,
-                    longitude: -74.006,
-                },
-                strength: 0.2,
-            },
-            {
-                id: "new-york-london",
-                source: {
-                    latitude: 40.7128,
-                    longitude: -74.006,
-                },
-                target: {
-                    latitude: 51.5074,
-                    longitude: -0.1278,
-                },
-                strength: 1,
-            },
-            {
-                id: "quito-las-vegas",
-                source: {
-                    latitude: -0.1807,
-                    longitude: -78.4678,
-                },
-                target: {
-                    latitude: 36.1699,
-                    longitude: -115.1398,
-                },
-                strength: 0.6,
-            },
-        ]);
-
-        const densityObservations = [
-            {
-                id: "vegas-1",
-                latitude: 36.1699,
-                longitude: -115.1398,
-            },
-            {
-                id: "vegas-2",
-                latitude: 36.2,
-                longitude: -115.2,
-            },
-            {
-                id: "vegas-3",
-                latitude: 37.1,
-                longitude: -116.1,
-            },
-            {
-                id: "new-york-1",
-                latitude: 40.7128,
-                longitude: -74.006,
-            },
-            {
-                id: "london-1",
-                latitude: 51.5074,
-                longitude: -0.1278,
-            },
-            {
-                id: "london-2",
-                latitude: 52.1,
-                longitude: -1.2,
-            },
-        ];
-
-        this.spotDensity.setRegions(calculateSpotDensity(densityObservations));
-
-        const stations = [
-            {
-                id: "las-vegas",
-                callsign: "LAS-VEGAS",
-                latitude: 36.1699,
-                longitude: -115.1398,
-            },
-            {
-                id: "new-york",
-                callsign: "NEW-YORK",
-                latitude: 40.7128,
-                longitude: -74.006,
-            },
-            {
-                id: "quito",
-                callsign: "QUITO",
-                latitude: -0.1807,
-                longitude: -78.4678,
-            },
-        ];
-
-        for (const station of stations) {
-            this.stationGroup.add(createStationMarker(station));
-        }
+    setObservationVisualization(visualization: ObservationVisualization): void {
+        this.signalArcs.setPaths(visualization.signalPaths);
+        this.stations.setStations(visualization.stations);
+        this.spotDensity.setRegions(visualization.spotDensityRegions);
     }
 
     setPredictionPaths(predictions: PredictionPath[]): void {
@@ -805,46 +609,33 @@ export class GlobeRenderingContext {
     }
 
     setCameraChangeHandler(
-      handler:
-        | ((camera: GlobeCameraState) => void)
-        | null,
+        handler: ((camera: GlobeCameraState) => void) | null,
     ): void {
-      this.onCameraChange = handler;
+        this.onCameraChange = handler;
     }
 
     setPerformanceSnapshotHandler(
-      handler:
-        | ((snapshot: RenderingPerformanceSnapshot) => void)
-        | null,
+        handler: ((snapshot: RenderingPerformanceSnapshot) => void) | null,
     ): void {
-      this.onPerformanceSnapshot = handler;
+        this.onPerformanceSnapshot = handler;
     }
 
-    setSelection(
-        selection: GlobeSelection,
-    ): void {
+    setSelection(selection: GlobeSelection): void {
         if (selection === null) {
             this.clearSelection(false);
             return;
         }
 
-        const currentSelection =
-            this.getSelectedObjectSelection();
+        const currentSelection = this.getSelectedObjectSelection();
 
         if (
             currentSelection !== null &&
-            this.isSameSelection(
-                currentSelection,
-                selection,
-            )
+            this.isSameSelection(currentSelection, selection)
         ) {
             return;
         }
 
-        const object =
-            this.findObjectForSelection(
-                selection,
-            );
+        const object = this.findObjectForSelection(selection);
 
         if (!object) {
             this.clearSelection(false);
@@ -855,19 +646,14 @@ export class GlobeRenderingContext {
     }
 
     setSelectionChangeHandler(
-      handler:
-        | ((selection: GlobeSelection) => void)
-        | null,
+        handler: ((selection: GlobeSelection) => void) | null,
     ): void {
-      this.onSelectionChange = handler;
+        this.onSelectionChange = handler;
     }
 
-   setReducedMotion(
-     reducedMotion: boolean,
-   ): void {
-     this.reducedMotion =
-       reducedMotion;
-   }
+    setReducedMotion(reducedMotion: boolean): void {
+        this.reducedMotion = reducedMotion;
+    }
 
     setLayerVisible(id: GlobeLayerId, visible: boolean): void {
         if (visible) {
@@ -892,10 +678,7 @@ export class GlobeRenderingContext {
     }
 
     selectAtViewportCenter(): void {
-        this.selectAtNormalizedCoordinates(
-            0,
-            0,
-        );
+        this.selectAtNormalizedCoordinates(0, 0);
     }
 
     clearCurrentSelection(): void {
@@ -907,81 +690,42 @@ export class GlobeRenderingContext {
         this.controls.update();
     }
 
-    rotateCamera(
-        horizontalRadians: number,
-        verticalRadians: number,
-    ): void {
-        const offset =
-            this.camera.position
-                .clone()
-                .sub(
-                    this.controls.target,
-                );
+    rotateCamera(horizontalRadians: number, verticalRadians: number): void {
+        const offset = this.camera.position.clone().sub(this.controls.target);
 
-        const spherical =
-            new THREE.Spherical()
-                .setFromVector3(
-                    offset,
-                );
+        const spherical = new THREE.Spherical().setFromVector3(offset);
 
-        spherical.theta +=
-            horizontalRadians;
+        spherical.theta += horizontalRadians;
 
-        spherical.phi +=
-            verticalRadians;
+        spherical.phi += verticalRadians;
 
         spherical.makeSafe();
 
-        offset.setFromSpherical(
-            spherical,
-        );
+        offset.setFromSpherical(spherical);
 
-        this.camera.position.copy(
-            this.controls.target
-                .clone()
-                .add(offset),
-        );
+        this.camera.position.copy(this.controls.target.clone().add(offset));
 
-        this.camera.lookAt(
-            this.controls.target,
-        );
+        this.camera.lookAt(this.controls.target);
 
         this.controls.update();
     }
 
-    zoomCamera(
-        scale: number,
-    ): void {
-        const offset =
-            this.camera.position
-                .clone()
-                .sub(
-                    this.controls.target,
-                );
+    zoomCamera(scale: number): void {
+        const offset = this.camera.position.clone().sub(this.controls.target);
 
-        const currentDistance =
-            offset.length();
+        const currentDistance = offset.length();
 
-        const nextDistance =
-            THREE.MathUtils.clamp(
-                currentDistance * scale,
-                this.controls.minDistance,
-                this.controls.maxDistance,
-            );
-
-        offset.setLength(
-            nextDistance,
+        const nextDistance = THREE.MathUtils.clamp(
+            currentDistance * scale,
+            this.controls.minDistance,
+            this.controls.maxDistance,
         );
 
-        this.camera.position.copy(
-            this.controls.target
-                .clone()
-                .add(offset),
-        );
+        offset.setLength(nextDistance);
 
-        this.camera.lookAt(
-            this.controls.target,
-        );
+        this.camera.position.copy(this.controls.target.clone().add(offset));
+
+        this.camera.lookAt(this.controls.target);
 
         this.controls.update();
     }
@@ -1051,6 +795,7 @@ export class GlobeRenderingContext {
         }
         this.signalArcs.dispose();
         this.spotDensity.dispose();
+        this.stations.dispose();
         this.solarTerminator.dispose();
         this.solarWeather.dispose();
         this.predictionPaths.dispose();
@@ -1076,16 +821,16 @@ export class GlobeRenderingContext {
         );
         this.onSelectionChange = null;
         this.onCameraChange?.({
-          position: {
-            x: this.camera.position.x,
-            y: this.camera.position.y,
-            z: this.camera.position.z,
-          },
-          target: {
-            x: this.controls.target.x,
-            y: this.controls.target.y,
-            z: this.controls.target.z,
-          },
+            position: {
+                x: this.camera.position.x,
+                y: this.camera.position.y,
+                z: this.camera.position.z,
+            },
+            target: {
+                x: this.controls.target.x,
+                y: this.controls.target.y,
+                z: this.controls.target.z,
+            },
         });
         this.renderer.dispose();
         this.container = null;
@@ -1096,20 +841,11 @@ export class GlobeRenderingContext {
 
         const elapsedSeconds = this.clock.elapsedTime;
 
-        this.signalArcs.update(
-          deltaSeconds,
-          this.reducedMotion,
-        );
+        this.signalArcs.update(deltaSeconds, this.reducedMotion);
 
-        this.spotDensity.update(
-          deltaSeconds,
-          this.reducedMotion,
-        );
+        this.spotDensity.update(deltaSeconds, this.reducedMotion);
 
-        this.predictionPaths.update(
-          deltaSeconds,
-          this.reducedMotion,
-        );
+        this.predictionPaths.update(deltaSeconds, this.reducedMotion);
 
         this.solarUpdateAccumulator += deltaSeconds;
 
@@ -1119,27 +855,17 @@ export class GlobeRenderingContext {
             this.solarUpdateAccumulator = 0;
         }
 
-        this.anomalies.update(
-          elapsedSeconds,
-          this.reducedMotion,
-        );
+        this.anomalies.update(elapsedSeconds, this.reducedMotion);
 
         this.controls.update();
 
-        this.renderer.render(
-          this.scene,
-          this.camera,
-        );
+        this.renderer.render(this.scene, this.camera);
 
         const performanceSnapshot =
-          this.performanceMonitor.update(
-            deltaSeconds,
-        );
+            this.performanceMonitor.update(deltaSeconds);
 
         if (performanceSnapshot) {
-            this.onPerformanceSnapshot?.(
-                 performanceSnapshot,
-            );
+            this.onPerformanceSnapshot?.(performanceSnapshot);
         }
 
         this.animationFrameId = window.requestAnimationFrame(this.render);

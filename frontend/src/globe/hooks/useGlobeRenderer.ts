@@ -7,11 +7,13 @@ import type { GlobeSelection } from "../types/globeSelection";
 import type { SolarWeatherSnapshot } from "../types/solarWeather";
 import { GlobeRenderingContext } from "../rendering/GlobeRenderingContext";
 import type { RenderingPerformanceSnapshot } from "../rendering/RenderingPerformanceMonitor";
+import type { ObservationVisualization } from "../utilities/observationVisualizationAdapter";
 
 export function useGlobeRenderer(
     containerRef: RefObject<HTMLDivElement | null>,
     solarWeather: SolarWeatherSnapshot | null,
     anomalies: Anomaly[],
+    observationVisualization: ObservationVisualization,
     selection: GlobeSelection,
     onSelectionChange?: (selection: GlobeSelection) => void,
     onCameraChange?: (camera: GlobeCameraState) => void,
@@ -115,6 +117,12 @@ export function useGlobeRenderer(
     useEffect(() => {
         renderingContextRef.current?.setAnomalies(anomalies);
     }, [anomalies]);
+
+    useEffect(() => {
+        renderingContextRef.current?.setObservationVisualization(
+            observationVisualization,
+        );
+    }, [observationVisualization]);
 
     const resetCamera = (): void => {
         renderingContextRef.current?.resetCamera();

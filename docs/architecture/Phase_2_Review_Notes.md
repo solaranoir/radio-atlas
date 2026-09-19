@@ -21,71 +21,81 @@ state, animation, accessibility, and testing subsystems were implemented, but
 identified several places where the implemented feature surface was ahead of
 its production data integration.
 
-The most significant remaining Phase 2 limitation is that observation-driven
-UI state and the Three.js visualization are not yet fully connected.
+Story 12.5 resolved the Phase 2 live-observation integration gap. Filtered
+observations now drive the globe's station markers, signal arcs, and
+spot-density visualization through the React-to-renderer boundary, and the
+production rendering context no longer creates representative observation
+fixtures for those layers.
 
 The current architecture should therefore be understood as a completed globe
-visualization and interaction foundation with some data paths still using
-representative visualization fixtures.
+visualization and interaction foundation with live observation rendering in
+place. Data capabilities intentionally assigned to later phases, including
+historical replay and prediction-path population, remain deferred according to
+the roadmap.
 
 ## Live Observation Integration
 
 ### Finding
 
-The React application retrieves and filters observation data, but the
-Three.js rendering context currently initializes signal arcs, stations, and
-spot-density visualization from representative data created by the rendering
-context.
-
-Filtered observation results affect application information and counts but do
-not currently replace the globe's signal-path, station, and density data.
-
-Anomaly data is already propagated through the renderer boundary separately.
+The Phase 2 review identified that the React application retrieved and
+filtered observation data while the Three.js rendering context still
+initialized signal arcs, stations, and spot-density visualization from
+representative data created by the rendering context.
 
 ### Disposition
 
-**Known integration gap.**
+**Resolved in Story 12.5.**
 
-This should not be described as a completed live-observation-to-globe data
-pipeline.
+Filtered observations now cross the existing React-to-renderer boundary as
+observation-derived visualization models. The application adapts filtered
+observations into signal paths, station markers, and spot-density regions and
+supplies those models to `GlobeRenderingContext`.
 
-The rendering architecture intentionally keeps data retrieval outside
-`GlobeRenderingContext`, so the expected integration path is to provide
-observation-derived visualization models to the renderer through its existing
-React-to-renderer boundary.
+`GlobeRenderingContext` no longer creates representative observation fixtures
+for signal arcs, stations, or spot density. It remains independent of API
+retrieval and receives renderer-ready visualization data through
+`setObservationVisualization()`.
 
-This distinction is documented in the Phase 2 architecture documentation so
-future work does not mistake the representative visualization data for a live
-data source.
+Station markers are reconciled through `StationCollection`, while the existing
+signal-arc and spot-density layer reconciliation APIs receive their
+observation-derived models through the same renderer update.
+
+Automated coverage includes observation-to-visualization adapter tests,
+station reconciliation tests, a React-to-Three.js integration-seam test, and
+browser tests using deterministic API-backed observations.
 
 ### Later-phase relationship
 
-Phase 3 depends on the existing globe becoming a consumer of time-windowed
-historical playback frames. Its replay frontend integration explicitly
-requires playback frames to be integrated with the existing globe renderer.
+Phase 3 can reuse this renderer boundary for time-windowed historical playback
+frames without coupling `GlobeRenderingContext` directly to an API client.
 
-The live-observation integration seam should therefore remain compatible with
-both current observations and future replay frames rather than coupling the
-renderer directly to an API client.
+Current live observations and future replay-derived visualization data can
+therefore share the same rendering architecture.
 
 ## Filtering and Globe Synchronization
 
 ### Finding
 
-Band, mode, region, and time filtering operate on application observation
-data, but those filtered results do not currently alter the rendered
-observation-derived globe objects.
+The Phase 2 review identified that band, mode, region, and time filtering
+operated on application observation data without altering the corresponding
+rendered observation-derived globe objects.
 
 ### Disposition
 
-**Known integration gap related to live observation rendering.**
+**Resolved in Story 12.5.**
 
-The filter controls themselves are implemented. The missing behavior is the
-final data bridge from filtered observations to observation-backed rendering
-layers.
+The visualization adapter now consumes the filtered observation collection, so
+filter changes update the station, signal-path, and spot-density models
+supplied to the existing Three.js rendering context.
 
-This should be treated as the same architectural seam as live-observation
-integration rather than as a separate filtering subsystem redesign.
+End-to-end coverage verifies this behavior with an observation-backed station:
+the station is rendered and selectable while its observation satisfies the
+active filters and is removed from the rendered scene when a subsequent
+filter excludes that observation.
+
+Visual regression tests now use deterministic mocked observation API data
+rather than relying on production renderer fixtures. Their baselines therefore
+represent the live observation rendering path introduced by Story 12.5.
 
 ## Prediction Paths
 
@@ -118,52 +128,58 @@ Phase 4 implements the actual forecasting system, including:
 Phase 2 therefore provides the visualization primitive that Phase 4 can
 populate with real forecast results.
 
-
-
 ## Propagation-Strength Animation
 
 ### Finding
 
-Signal-path animation and brightness behavior are implemented, but the
-currently rendered paths use representative strength values rather than
-strength derived from the live observation stream.
+The Phase 2 review identified that signal-path animation and brightness
+behavior were implemented while the rendered paths still used representative
+strength values rather than strength derived from live observations.
 
 ### Disposition
 
-**Animation semantics implemented; observation-data binding remains part of
-the live-observation integration gap.**
+**Resolved in Story 12.5.**
 
-The animation mechanism does not need to be redesigned. When observation
-models are supplied to the renderer, their derived signal-strength values can
-drive the existing visual behavior.
+Observation-backed signal paths now derive their normalized strength from the
+observation's `snr_db` value before crossing the renderer boundary.
+
+The visualization adapter maps SNR values linearly from -30 dB through +10 dB
+onto the renderer's 0 through 1 strength range, clamps values outside that
+range, and assigns zero strength when SNR is unavailable.
+
+The existing signal-path rendering and animation behavior therefore consumes
+observation-derived strength without requiring a redesign of the animation
+mechanism.
 
 ## End-to-End Test Coverage
 
 ### Finding
 
-Current E2E tests validate:
-
-- layer visibility persistence
-- filter behavior
-- station selection
-- camera rotation and reset
-
-The tests do not currently assert that filtering changes observation-backed
+The Phase 2 review originally identified that E2E coverage validated layer
+visibility persistence, filter behavior, station selection, and camera
+rotation/reset, but did not verify that filtering changed observation-backed
 objects rendered in the Three.js scene.
 
 ### Disposition
 
-**Valid regression-coverage gap.**
+**Resolved in Story 12.5.**
 
-An observation-to-globe integration test should accompany the implementation
-of the live-observation renderer bridge. Testing the bridge before it exists
-would only codify the current fixture behavior.
+The E2E observation fixture now supplies deterministic API-backed radio
+observations to the production application path.
 
-Phase 3 also adds frontend integration testing for replay-to-globe
+Filter coverage verifies both application state and rendered behavior. An
+observation-backed station is selectable while its observation satisfies the
+active filters and is no longer selectable after a subsequent filter excludes
+that observation.
+
+Separate E2E coverage continues to validate layer visibility persistence,
+station selection and clearing, and camera rotation/reset.
+
+Phase 3 can extend this integration-testing pattern for replay-to-globe
 synchronization.
 
-Phase 5 expands CI coverage gates and runs the complete release-candidate
-regression suite.
+Phase 5 remains responsible for expanded CI coverage gates and the complete
+release-candidate regression suite.
 
 ## Coverage Scope
 
@@ -413,13 +429,16 @@ The Phase 2 globe architecture, rendering layers, interaction system, layer
 management, UI, animation semantics, accessibility features, and testing
 infrastructure establish the visualization platform required by later phases.
 
-However, Phase 2 documentation should not claim that:
+Story 12.5 completed the production observation-data integration for the
+Phase 2 globe. Live filtered observations now drive signal arcs, station
+markers, and spot-density visualization, and filter changes propagate to
+those rendered objects.
 
-- live observations currently drive signal arcs, stations, or spot density
-- filters currently alter those rendered observation objects
+Phase 2 documentation should still not claim that:
+
 - production forecasts currently populate prediction paths
 - physical mobile-device performance has been formally certified
 
-Those limitations are recorded explicitly so subsequent phases can extend the
-existing architecture without relying on assumptions that the current code
-does not satisfy.
+Those remaining limitations are recorded explicitly so subsequent phases can
+extend the existing architecture without relying on assumptions that the
+current code does not satisfy.

@@ -213,10 +213,15 @@ preserving the information represented by the signal path.
 concentrations of radio observations.
 
 The density utilities aggregate observation locations into density regions that
-can be supplied to the rendering layer. In the current Phase 2 implementation,
-however, filtered live observations are not yet connected to
-`SpotDensityLayer`; the renderer currently demonstrates this visualization
-using its existing seeded data.
+are supplied to the rendering layer. In the current Phase 2 implementation,
+filtered live observations are adapted into geographic activity points from
+valid sender and receiver endpoints. Those points are aggregated into density
+regions and supplied to `SpotDensityLayer` through the React-to-renderer
+boundary.
+
+The production rendering context does not create seeded observation data for
+this layer. Filter changes therefore propagate through the observation
+visualization adapter and update the density regions rendered on the globe.
 
 When observation-derived density data is supplied, density controls the visual
 treatment of the resulting markers. Pulse behavior communicates activity
@@ -490,10 +495,13 @@ Unit tests cover:
 - prediction-path behavior
 - anomaly behavior
 
-Visual regression tests cover representative rendered layers, including signal
-paths and spot density.
+Visual regression tests use deterministic API-backed observations to cover
+observation-derived rendering, including signal paths and spot density, while
+also verifying full-motion density animation.
 
-End-to-end tests verify user-visible layer toggling and persistence.
+End-to-end tests verify user-visible layer toggling and persistence, live
+observation-backed station selection, filter-to-renderer synchronization, and
+camera interaction.
 
 ## Architectural Invariants
 
