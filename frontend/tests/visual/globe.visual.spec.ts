@@ -7,6 +7,67 @@ function getGlobe(page: Page): Locator {
     });
 }
 
+async function mockObservations(page: Page): Promise<void> {
+    const now = new Date();
+
+    const observedAt = (minutesAgo: number): string =>
+        new Date(now.getTime() - minutesAgo * 60_000).toISOString();
+
+    await page.route("**/api/v1/observations?*", async (route) => {
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify([
+                {
+                    id: 1,
+                    provider_id: 1,
+                    sequence_number: 101,
+                    sender_callsign: "KK7QEA",
+                    receiver_callsign: "W1AW",
+                    sender_grid: "DM26",
+                    receiver_grid: "FN31",
+                    frequency_hz: 14_074_000,
+                    band: "20m",
+                    mode: "FT8",
+                    snr_db: -8,
+                    observed_at: observedAt(5),
+                    transmitted_at: null,
+                },
+                {
+                    id: 2,
+                    provider_id: 1,
+                    sequence_number: 102,
+                    sender_callsign: "K7ABC",
+                    receiver_callsign: "W6XYZ",
+                    sender_grid: "DM26",
+                    receiver_grid: "CM87",
+                    frequency_hz: 14_074_000,
+                    band: "20m",
+                    mode: "FT4",
+                    snr_db: -12,
+                    observed_at: observedAt(10),
+                    transmitted_at: null,
+                },
+                {
+                    id: 3,
+                    provider_id: 1,
+                    sequence_number: 103,
+                    sender_callsign: "N0CALL",
+                    receiver_callsign: "K1ABC",
+                    sender_grid: "DM79",
+                    receiver_grid: "FN42",
+                    frequency_hz: 7_074_000,
+                    band: "40m",
+                    mode: "FT8",
+                    snr_db: -5,
+                    observed_at: observedAt(15),
+                    transmitted_at: null,
+                },
+            ]),
+        });
+    });
+}
+
 async function setLayerVisibility(
     page: Page,
     layerName: string,
@@ -29,6 +90,8 @@ test.describe("Radio Weather Globe visual regression", () => {
         await page.emulateMedia({
             reducedMotion: "reduce",
         });
+
+        await mockObservations(page);
 
         await page.goto("/");
 

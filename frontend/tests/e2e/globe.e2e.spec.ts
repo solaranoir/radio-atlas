@@ -155,10 +155,53 @@ test.describe("Radio Weather Globe", () => {
         await expect(bandFilter).toHaveValue("20m");
         await expect(observationCount).toHaveText("2");
 
+        const globe = page.getByRole("application", {
+            name: "Interactive radio weather globe",
+        });
+
+        const canvas = globe.locator("canvas");
+
+        await expect(canvas).toBeVisible();
+
+        const bounds = await canvas.boundingBox();
+
+        expect(bounds).not.toBeNull();
+
+        if (!bounds) {
+            throw new Error("Globe canvas has no bounding box");
+        }
+
+        const w6xyz = projectGeographicCoordinates(
+            37.5,
+            -123,
+            bounds.width,
+            bounds.height,
+        );
+
+        await canvas.click({
+            position: w6xyz,
+        });
+
+        await expect(
+            page.getByRole("heading", {
+                name: "W6XYZ",
+            }),
+        ).toBeVisible();
+
         await modeFilter.selectOption("FT8");
 
         await expect(modeFilter).toHaveValue("FT8");
         await expect(observationCount).toHaveText("1");
+
+        await canvas.click({
+            position: w6xyz,
+        });
+
+        await expect(
+            page.getByRole("heading", {
+                name: "W6XYZ",
+            }),
+        ).not.toBeVisible();
 
         await page
             .getByRole("button", {
@@ -194,20 +237,20 @@ test.describe("Radio Weather Globe", () => {
             throw new Error("Globe canvas has no bounding box");
         }
 
-        const quito = projectGeographicCoordinates(
-            -0.1807,
-            -78.4678,
+        const kk7qea = projectGeographicCoordinates(
+            36.5,
+            -115,
             bounds.width,
             bounds.height,
         );
 
         await canvas.click({
-            position: quito,
+            position: kk7qea,
         });
 
         await expect(
             page.getByRole("heading", {
-                name: "QUITO",
+                name: "KK7QEA",
             }),
         ).toBeVisible();
 
@@ -217,12 +260,6 @@ test.describe("Radio Weather Globe", () => {
         await page.keyboard.press("Escape");
 
         await expect(emptySelection).toBeVisible();
-
-        await expect(
-            page.getByRole("heading", {
-                name: "QUITO",
-            }),
-        ).not.toBeVisible();
     });
     test("rotates and resets the globe camera", async ({ page }) => {
         const globe = page.getByRole("application", {
@@ -241,9 +278,9 @@ test.describe("Radio Weather Globe", () => {
             throw new Error("Globe canvas has no bounding box");
         }
 
-        const quito = projectGeographicCoordinates(
-            -0.1807,
-            -78.4678,
+        const kk7qea = projectGeographicCoordinates(
+            36.5,
+            -115,
             bounds.width,
             bounds.height,
         );
@@ -255,12 +292,12 @@ test.describe("Radio Weather Globe", () => {
         }
 
         await canvas.click({
-            position: quito,
+            position: kk7qea,
         });
 
         await expect(
             page.getByRole("heading", {
-                name: "QUITO",
+                name: "KK7QEA",
             }),
         ).not.toBeVisible();
 
@@ -271,12 +308,12 @@ test.describe("Radio Weather Globe", () => {
             .click();
 
         await canvas.click({
-            position: quito,
+            position: kk7qea,
         });
 
         await expect(
             page.getByRole("heading", {
-                name: "QUITO",
+                name: "KK7QEA",
             }),
         ).toBeVisible();
     });
