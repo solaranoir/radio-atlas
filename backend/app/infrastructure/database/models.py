@@ -253,6 +253,7 @@ class Spot(Base):
             "mode",
             unique=True,
             postgresql_where=text("sequence_number IS NULL"),
+            postgresql_nulls_not_distinct=True,
         ),
         Index("ix_spots_observed_at", "observed_at"),
         Index("ix_spots_band", "band"),
@@ -326,3 +327,326 @@ class SolarCondition(Base):
             "observed_at",
         ),
     )
+class AnalyticsBandHourly(Base):
+    __tablename__ = "analytics_band_hourly"
+
+    id: Mapped[int] = mapped_column(
+        BigInteger,
+        Identity(always=True),
+        primary_key=True,
+        autoincrement=True,
+    )
+    bucket_start: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    band: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+    mode: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+    )
+    observation_count: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    unique_sender_count: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    unique_receiver_count: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    snr_sample_count: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    snr_min_db: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+    snr_max_db: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+    snr_avg_db: Mapped[float | None] = mapped_column(
+        Double,
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "bucket_start",
+            "band",
+            "mode",
+            name="uq_analytics_band_hourly_bucket_band_mode",
+        ),
+        Index(
+            "ix_analytics_band_hourly_bucket_start",
+            "bucket_start",
+        ),
+        Index(
+            "ix_analytics_band_hourly_band_mode_bucket",
+            "band",
+            "mode",
+            "bucket_start",
+        ),
+    )
+class AnalyticsBandDaily(Base):
+    __tablename__ = "analytics_band_daily"
+
+    id: Mapped[int] = mapped_column(
+        BigInteger,
+        Identity(always=True),
+        primary_key=True,
+        autoincrement=True,
+    )
+    bucket_start: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    band: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+    mode: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+    )
+    observation_count: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    unique_sender_count: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    unique_receiver_count: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    snr_sample_count: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    snr_min_db: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+    snr_max_db: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+    snr_avg_db: Mapped[float | None] = mapped_column(
+        Double,
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "bucket_start",
+            "band",
+            "mode",
+            name="uq_analytics_band_daily_bucket_band_mode",
+        ),
+        Index(
+            "ix_analytics_band_daily_bucket_start",
+            "bucket_start",
+        ),
+        Index(
+            "ix_analytics_band_daily_band_mode_bucket",
+            "band",
+            "mode",
+            "bucket_start",
+        ),
+    )
+class AnalyticsStationHourly(Base):
+    __tablename__ = "analytics_station_hourly"
+
+    id: Mapped[int] = mapped_column(
+        BigInteger,
+        Identity(always=True),
+        primary_key=True,
+        autoincrement=True,
+    )
+    bucket_start: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    station_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("stations.id"),
+        nullable=True,
+    )
+    callsign: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+    )
+    direction: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+    )
+    observation_count: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    unique_counterparty_count: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    snr_sample_count: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    snr_min_db: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+    snr_max_db: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+    snr_avg_db: Mapped[float | None] = mapped_column(
+        Double,
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "bucket_start",
+            "callsign",
+            "direction",
+            name="uq_analytics_station_hourly_bucket_callsign_direction",
+        ),
+        Index(
+            "ix_analytics_station_hourly_bucket_start",
+            "bucket_start",
+        ),
+        Index(
+            "ix_analytics_station_hourly_callsign_direction_bucket",
+            "callsign",
+            "direction",
+            "bucket_start",
+        ),
+        Index(
+            "ix_analytics_station_hourly_station_id",
+            "station_id",
+        ),
+    )
+class AnalyticsStationDaily(Base):
+    __tablename__ = "analytics_station_daily"
+
+    id: Mapped[int] = mapped_column(
+        BigInteger,
+        Identity(always=True),
+        primary_key=True,
+        autoincrement=True,
+    )
+    bucket_start: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    station_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("stations.id"),
+        nullable=True,
+    )
+    callsign: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+    )
+    direction: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+    )
+    observation_count: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    unique_counterparty_count: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    snr_sample_count: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    snr_min_db: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+    snr_max_db: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+    snr_avg_db: Mapped[float | None] = mapped_column(
+        Double,
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "bucket_start",
+            "callsign",
+            "direction",
+            name="uq_analytics_station_daily_bucket_callsign_direction",
+        ),
+        Index(
+            "ix_analytics_station_daily_bucket_start",
+            "bucket_start",
+        ),
+        Index(
+            "ix_analytics_station_daily_callsign_direction_bucket",
+            "callsign",
+            "direction",
+            "bucket_start",
+        ),
+        Index(
+            "ix_analytics_station_daily_station_id",
+            "station_id",
+        ),
+    )
+
