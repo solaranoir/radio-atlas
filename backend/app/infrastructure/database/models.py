@@ -327,6 +327,8 @@ class SolarCondition(Base):
             "observed_at",
         ),
     )
+
+
 class AnalyticsBandHourly(Base):
     __tablename__ = "analytics_band_hourly"
 
@@ -405,6 +407,8 @@ class AnalyticsBandHourly(Base):
             "bucket_start",
         ),
     )
+
+
 class AnalyticsBandDaily(Base):
     __tablename__ = "analytics_band_daily"
 
@@ -483,6 +487,8 @@ class AnalyticsBandDaily(Base):
             "bucket_start",
         ),
     )
+
+
 class AnalyticsStationHourly(Base):
     __tablename__ = "analytics_station_hourly"
 
@@ -566,6 +572,8 @@ class AnalyticsStationHourly(Base):
             "station_id",
         ),
     )
+
+
 class AnalyticsStationDaily(Base):
     __tablename__ = "analytics_station_daily"
 
@@ -649,4 +657,3 @@ class AnalyticsStationDaily(Base):
             "station_id",
         ),
     )
-

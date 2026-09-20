@@ -5,14 +5,15 @@ Revises: f4d2f0efb1ba
 Create Date: 2026-09-20 09:08:58.664213
 
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '9601bd15dc66'
-down_revision: str | Sequence[str] | None = 'f4d2f0efb1ba'
+revision: str = "9601bd15dc66"
+down_revision: str | Sequence[str] | None = "f4d2f0efb1ba"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -243,6 +244,8 @@ def upgrade() -> None:
         ["station_id"],
         unique=False,
     )
+
+
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_index(
