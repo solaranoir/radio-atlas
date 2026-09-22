@@ -2,11 +2,21 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.analytics.aggregation.persistence import (
+    upsert_band_rollups,
+    upsert_station_rollups,
+)
 from app.analytics.aggregation.queries import (
     build_daily_band_aggregation_query,
     build_daily_station_aggregation_query,
     build_hourly_band_aggregation_query,
     build_hourly_station_aggregation_query,
+)
+from app.infrastructure.database.models import (
+    AnalyticsBandDaily,
+    AnalyticsBandHourly,
+    AnalyticsStationDaily,
+    AnalyticsStationHourly,
 )
 
 
@@ -35,20 +45,31 @@ def run_hourly_aggregation(
     start_time = floor_to_hour(bucket_start)
     end_time = start_time + timedelta(hours=1)
 
-    session.execute(
+    band_result = session.execute(
         build_hourly_band_aggregation_query(
             start_time=start_time,
             end_time=end_time,
         )
     )
+    upsert_band_rollups(
+        session,
+        model=AnalyticsBandHourly,
+        rows=[dict(row) for row in band_result.mappings().all()],
+    )
 
     for direction in ("sender", "receiver"):
-        session.execute(
+        station_result = session.execute(
             build_hourly_station_aggregation_query(
                 start_time=start_time,
                 end_time=end_time,
                 direction=direction,
             )
+        )
+        upsert_station_rollups(
+            session,
+            model=AnalyticsStationHourly,
+            rows=[dict(row) for row in station_result.mappings().all()],
+            direction=direction,
         )
 
 
@@ -60,20 +81,31 @@ def run_daily_aggregation(
     start_time = floor_to_day(bucket_start)
     end_time = start_time + timedelta(days=1)
 
-    session.execute(
+    band_result = session.execute(
         build_daily_band_aggregation_query(
             start_time=start_time,
             end_time=end_time,
         )
     )
+    upsert_band_rollups(
+        session,
+        model=AnalyticsBandDaily,
+        rows=[dict(row) for row in band_result.mappings().all()],
+    )
 
     for direction in ("sender", "receiver"):
-        session.execute(
+        station_result = session.execute(
             build_daily_station_aggregation_query(
                 start_time=start_time,
                 end_time=end_time,
                 direction=direction,
             )
+        )
+        upsert_station_rollups(
+            session,
+            model=AnalyticsStationDaily,
+            rows=[dict(row) for row in station_result.mappings().all()],
+            direction=direction,
         )
 
 
