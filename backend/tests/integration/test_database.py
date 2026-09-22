@@ -1,12 +1,10 @@
-from collections.abc import Generator
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.config import Settings
 from app.domain import (
     SolarObservation,
 )
@@ -17,29 +15,6 @@ from app.infrastructure.database.models import (
     Station,
 )
 from app.ingestion.persistence import persist_observation
-
-
-@pytest.fixture
-def db_session() -> Generator[Session, None, None]:
-    settings = Settings()
-
-    engine = create_engine(settings.radio_atlas_database_url)
-
-    connection = engine.connect()
-    transaction = connection.begin()
-
-    session = Session(bind=connection)
-
-    try:
-        yield session
-    finally:
-        session.close()
-
-        if transaction.is_active:
-            transaction.rollback()
-
-        connection.close()
-        engine.dispose()
 
 
 def test_insert_provider(db_session: Session) -> None:
