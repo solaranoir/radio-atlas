@@ -4,6 +4,7 @@ from app.analytics.statistics.metrics import (
     SignalQualityRollup,
     calculate_activity_baseline,
     calculate_band_activity,
+    calculate_correlation,
     calculate_signal_quality,
     calculate_station_activity,
     combine_signal_quality,
@@ -148,3 +149,40 @@ def test_calculate_activity_baseline_counts_missing_buckets_as_zero() -> None:
     )
 
     assert result == pytest.approx(15.0)
+
+
+def test_calculate_correlation_returns_perfect_positive_correlation() -> None:
+    result = calculate_correlation(
+        [
+            (1.0, 10.0),
+            (2.0, 20.0),
+            (3.0, 30.0),
+        ]
+    )
+
+    assert result.correlation == pytest.approx(1.0)
+    assert result.sample_count == 3
+
+
+def test_calculate_correlation_is_undefined_with_one_pair() -> None:
+    result = calculate_correlation(
+        [
+            (4.0, 120.0),
+        ]
+    )
+
+    assert result.correlation is None
+    assert result.sample_count == 1
+
+
+def test_calculate_correlation_is_undefined_with_zero_variance() -> None:
+    result = calculate_correlation(
+        [
+            (3.0, 100.0),
+            (3.0, 120.0),
+            (3.0, 140.0),
+        ]
+    )
+
+    assert result.correlation is None
+    assert result.sample_count == 3
