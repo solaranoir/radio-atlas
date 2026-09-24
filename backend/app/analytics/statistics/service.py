@@ -6,11 +6,13 @@ from sqlalchemy.orm import Session
 from app.analytics.statistics.cache import StatisticsCache
 from app.analytics.statistics.metrics import (
     BandActivityMetrics,
+    CorrelationMetrics,
     SignalQualityMetrics,
     SignalQualityRollup,
     StationActivityMetrics,
     calculate_activity_baseline,
     calculate_band_activity,
+    calculate_correlation,
     calculate_station_activity,
     combine_signal_quality,
 )
@@ -18,6 +20,7 @@ from app.analytics.statistics.queries import (
     BucketResolution,
     StationDirection,
     build_band_statistics_query,
+    build_solar_statistics_query,
     build_station_statistics_query,
 )
 from app.infrastructure.database.models import (
@@ -66,6 +69,18 @@ class StationRollup:
     snr_min_db: int | None
     snr_max_db: int | None
     snr_avg_db: float | None
+
+
+@dataclass(frozen=True)
+class SolarCorrelationStatistics:
+    activity: CorrelationMetrics
+    signal_quality: CorrelationMetrics
+
+
+@dataclass(frozen=True)
+class SolarRollup:
+    bucket_start: datetime
+    average_value: float
 
 
 def get_baseline_window(
@@ -433,3 +448,125 @@ class StatisticsService:
             )
 
         return statistics
+
+    def get_solar_rollups(
+        self,
+        *,
+        start_time: datetime,
+        end_time: datetime,
+        resolution: BucketResolution,
+        observation_type: str,
+    ) -> list[SolarRollup]:
+        query = build_solar_statistics_query(
+            start_time=start_time,
+            end_time=end_time,
+            resolution=resolution,
+            observation_type=observation_type,
+        )
+
+        rows = self._session.execute(query).all()
+
+        return [
+            SolarRollup(
+                bucket_start=row.bucket_start,
+                average_value=float(row.average_value),
+            )
+            for row in rows
+        ]
+
+    def calculate_solar_correlations(
+        self,
+        *,
+        band_rollups: list[BandRollup],
+        solar_rollups: list[SolarRollup],
+    ) -> SolarCorrelationStatistics:
+        solar_by_bucket = {rollup.bucket_start: rollup.average_value for rollup in solar_rollups}
+
+        activity_by_bucket: dict[datetime, int] = {}
+
+        for rollup in band_rollups:
+            activity_by_bucket[rollup.bucket_start] = (
+                activity_by_bucket.get(rollup.bucket_start, 0) + rollup.observation_count
+            )
+
+        activity_pairs: list[tuple[float, float]] = []
+
+        for bucket_start, observation_count in activity_by_bucket.items():
+            solar_value = solar_by_bucket.get(bucket_start)
+
+            if solar_value is None:
+                continue
+
+            activity_pairs.append(
+                (
+                    solar_value,
+                    float(observation_count),
+                )
+            )
+
+        snr_sum_by_bucket: dict[datetime, float] = {}
+        snr_count_by_bucket: dict[datetime, int] = {}
+
+        for rollup in band_rollups:
+            if rollup.snr_sample_count <= 0 or rollup.snr_avg_db is None:
+                continue
+
+            snr_sum_by_bucket[rollup.bucket_start] = (
+                snr_sum_by_bucket.get(rollup.bucket_start, 0.0)
+                + rollup.snr_avg_db * rollup.snr_sample_count
+            )
+            snr_count_by_bucket[rollup.bucket_start] = (
+                snr_count_by_bucket.get(rollup.bucket_start, 0) + rollup.snr_sample_count
+            )
+
+        signal_quality_pairs: list[tuple[float, float]] = []
+
+        for bucket_start, snr_sum in snr_sum_by_bucket.items():
+            solar_value = solar_by_bucket.get(bucket_start)
+
+            if solar_value is None:
+                continue
+
+            average_snr = snr_sum / snr_count_by_bucket[bucket_start]
+
+            signal_quality_pairs.append(
+                (
+                    solar_value,
+                    average_snr,
+                )
+            )
+
+        return SolarCorrelationStatistics(
+            activity=calculate_correlation(activity_pairs),
+            signal_quality=calculate_correlation(signal_quality_pairs),
+        )
+
+    def get_solar_correlations(
+        self,
+        *,
+        start_time: datetime,
+        end_time: datetime,
+        resolution: BucketResolution,
+        observation_type: str,
+        band: str | None = None,
+        mode: str | None = None,
+    ) -> SolarCorrelationStatistics:
+        band_rollups = self.get_band_rollups(
+            start_time=start_time,
+            end_time=end_time,
+            resolution=resolution,
+            band=band,
+            mode=mode,
+        )
+
+        solar_rollups = self.get_solar_rollups(
+            start_time=start_time,
+            end_time=end_time,
+            resolution=resolution,
+            observation_type=observation_type,
+        )
+
+        return self.calculate_solar_correlations(
+            band_rollups=band_rollups,
+            solar_rollups=solar_rollups,
+        )

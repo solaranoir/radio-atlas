@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.analytics.statistics.cache import StatisticsCache
 from app.analytics.statistics.service import (
     BandRollup,
+    SolarRollup,
     StationRollup,
     StatisticsService,
     get_baseline_window,
@@ -406,3 +407,149 @@ def test_get_band_statistics_recomputes_malformed_cached_result() -> None:
 
     cache.get.assert_called_once()
     cache.set.assert_called_once()
+
+
+def test_calculate_solar_correlations_pairs_matching_buckets() -> None:
+    service = StatisticsService(Mock())
+
+    first_bucket = datetime(2026, 9, 23, 12, tzinfo=UTC)
+    second_bucket = datetime(2026, 9, 23, 13, tzinfo=UTC)
+
+    band_rollups = [
+        BandRollup(
+            bucket_start=first_bucket,
+            band="20m",
+            mode="FT8",
+            observation_count=100,
+            unique_sender_count=20,
+            unique_receiver_count=25,
+            snr_sample_count=80,
+            snr_min_db=-20,
+            snr_max_db=5,
+            snr_avg_db=-10.0,
+        ),
+        BandRollup(
+            bucket_start=second_bucket,
+            band="20m",
+            mode="FT8",
+            observation_count=200,
+            unique_sender_count=30,
+            unique_receiver_count=35,
+            snr_sample_count=160,
+            snr_min_db=-18,
+            snr_max_db=8,
+            snr_avg_db=-5.0,
+        ),
+    ]
+
+    solar_rollups = [
+        SolarRollup(
+            bucket_start=first_bucket,
+            average_value=100.0,
+        ),
+        SolarRollup(
+            bucket_start=second_bucket,
+            average_value=200.0,
+        ),
+    ]
+
+    result = service.calculate_solar_correlations(
+        band_rollups=band_rollups,
+        solar_rollups=solar_rollups,
+    )
+
+    assert result.activity.correlation == pytest.approx(1.0)
+    assert result.activity.sample_count == 2
+    assert result.signal_quality.correlation == pytest.approx(1.0)
+    assert result.signal_quality.sample_count == 2
+
+
+def test_calculate_solar_correlations_excludes_unmatched_buckets() -> None:
+    service = StatisticsService(Mock())
+
+    first_bucket = datetime(2026, 9, 23, 12, tzinfo=UTC)
+    second_bucket = datetime(2026, 9, 23, 13, tzinfo=UTC)
+
+    band_rollups = [
+        BandRollup(
+            bucket_start=first_bucket,
+            band="20m",
+            mode="FT8",
+            observation_count=100,
+            unique_sender_count=20,
+            unique_receiver_count=25,
+            snr_sample_count=80,
+            snr_min_db=-20,
+            snr_max_db=5,
+            snr_avg_db=-10.0,
+        ),
+    ]
+
+    solar_rollups = [
+        SolarRollup(
+            bucket_start=first_bucket,
+            average_value=100.0,
+        ),
+        SolarRollup(
+            bucket_start=second_bucket,
+            average_value=200.0,
+        ),
+    ]
+
+    result = service.calculate_solar_correlations(
+        band_rollups=band_rollups,
+        solar_rollups=solar_rollups,
+    )
+
+    assert result.activity.correlation is None
+    assert result.activity.sample_count == 1
+    assert result.signal_quality.correlation is None
+    assert result.signal_quality.sample_count == 1
+
+
+def test_calculate_solar_correlations_combines_radio_rows_in_same_bucket() -> None:
+    bucket_start = datetime(2026, 9, 23, 12, tzinfo=UTC)
+
+    band_rollups = [
+        BandRollup(
+            bucket_start=bucket_start,
+            band="20m",
+            mode="FT8",
+            observation_count=10,
+            unique_sender_count=5,
+            unique_receiver_count=5,
+            snr_sample_count=10,
+            snr_min_db=-20,
+            snr_max_db=-5,
+            snr_avg_db=-10.0,
+        ),
+        BandRollup(
+            bucket_start=bucket_start,
+            band="40m",
+            mode="FT8",
+            observation_count=20,
+            unique_sender_count=8,
+            unique_receiver_count=9,
+            snr_sample_count=20,
+            snr_min_db=-18,
+            snr_max_db=-3,
+            snr_avg_db=-5.0,
+        ),
+    ]
+
+    solar_rollups = [
+        SolarRollup(
+            bucket_start=bucket_start,
+            average_value=3.0,
+        ),
+    ]
+
+    service = StatisticsService(Mock())
+
+    result = service.calculate_solar_correlations(
+        band_rollups=band_rollups,
+        solar_rollups=solar_rollups,
+    )
+
+    assert result.activity.sample_count == 1
+    assert result.signal_quality.sample_count == 1

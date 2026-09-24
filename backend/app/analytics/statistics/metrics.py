@@ -123,3 +123,48 @@ def calculate_activity_baseline(
         return None
 
     return sum(observation_counts) / expected_bucket_count
+
+
+@dataclass(frozen=True)
+class CorrelationMetrics:
+    correlation: float | None
+    sample_count: int
+
+
+def calculate_correlation(
+    pairs: list[tuple[float, float]],
+) -> CorrelationMetrics:
+    sample_count = len(pairs)
+
+    if sample_count < 2:
+        return CorrelationMetrics(
+            correlation=None,
+            sample_count=sample_count,
+        )
+
+    solar_values = [solar_value for solar_value, _ in pairs]
+    radio_values = [radio_value for _, radio_value in pairs]
+
+    solar_mean = sum(solar_values) / sample_count
+    radio_mean = sum(radio_values) / sample_count
+
+    solar_variance = sum((value - solar_mean) ** 2 for value in solar_values)
+    radio_variance = sum((value - radio_mean) ** 2 for value in radio_values)
+
+    if solar_variance == 0 or radio_variance == 0:
+        return CorrelationMetrics(
+            correlation=None,
+            sample_count=sample_count,
+        )
+
+    covariance = sum(
+        (solar_value - solar_mean) * (radio_value - radio_mean)
+        for solar_value, radio_value in pairs
+    )
+
+    correlation = covariance / (solar_variance**0.5 * radio_variance**0.5)
+
+    return CorrelationMetrics(
+        correlation=correlation,
+        sample_count=sample_count,
+    )

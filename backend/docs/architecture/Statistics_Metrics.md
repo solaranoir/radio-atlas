@@ -278,9 +278,12 @@ Solar observations are aligned with radio-activity buckets by UTC timestamp.
 For each radio bucket, the statistics engine should associate the solar
 measurement appropriate to that bucket and observation type.
 
-When multiple solar observations exist within a radio bucket, the computation
-pipeline must apply a consistent aggregation rule appropriate to the solar
-measurement before calculating correlation.
+When multiple solar observations exist within a radio bucket, the initial
+statistics implementation uses the arithmetic mean of all non-null normalized
+`SolarCondition.value` measurements for the requested observation type within
+that UTC bucket. Null values do not participate in the average.
+
+This produces one solar value per UTC bucket before correlation is calculated.
 
 Buckets without a usable solar measurement for the requested observation type
 are excluded from the correlation calculation.

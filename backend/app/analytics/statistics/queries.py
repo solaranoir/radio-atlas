@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, func, select
 
 from app.infrastructure.database.base import Base
 from app.infrastructure.database.models import (
@@ -9,6 +9,7 @@ from app.infrastructure.database.models import (
     AnalyticsBandHourly,
     AnalyticsStationDaily,
     AnalyticsStationHourly,
+    SolarCondition,
 )
 
 BucketResolution = Literal["hour", "day"]
@@ -68,4 +69,36 @@ def build_station_statistics_query(
         model.bucket_start,
         model.callsign,
         model.direction,
+    )
+
+
+def build_solar_statistics_query(
+    *,
+    start_time: datetime,
+    end_time: datetime,
+    resolution: BucketResolution,
+    observation_type: str,
+) -> Select[tuple[datetime, float]]:
+    bucket_start = func.date_trunc(
+        resolution,
+        SolarCondition.observed_at,
+    ).label("bucket_start")
+
+    average_value = func.avg(
+        SolarCondition.value,
+    ).label("average_value")
+
+    return (
+        select(
+            bucket_start,
+            average_value,
+        )
+        .where(
+            SolarCondition.observed_at >= start_time,
+            SolarCondition.observed_at < end_time,
+            SolarCondition.observation_type == observation_type,
+            SolarCondition.value.is_not(None),
+        )
+        .group_by(bucket_start)
+        .order_by(bucket_start)
     )

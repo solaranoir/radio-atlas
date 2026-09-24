@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.analytics.aggregation.jobs import run_hourly_aggregation
 from app.analytics.statistics.service import StatisticsService
-from app.infrastructure.database.models import Provider, Spot
+from app.infrastructure.database.models import Provider, SolarCondition, Spot
 
 
 def test_statistics_service_reads_persisted_band_rollup(
@@ -157,3 +157,62 @@ def test_statistics_service_reads_persisted_station_rollups(
     assert by_direction["receiver"].observation_count == 1
     assert by_direction["receiver"].unique_counterparty_count == 1
     assert by_direction["receiver"].snr_avg_db == -5.0
+
+
+def test_statistics_service_averages_solar_values_by_hour(
+    db_session: Session,
+) -> None:
+    provider = Provider(
+        name="statistics_solar_provider",
+        display_name="Statistics Solar Provider",
+        provider_type="solar",
+    )
+
+    db_session.add(provider)
+    db_session.flush()
+
+    db_session.add_all(
+        [
+            SolarCondition(
+                provider_id=provider.id,
+                observation_type="kp_index",
+                observed_at=datetime(2026, 9, 23, 12, 5, tzinfo=UTC),
+                value=2.0,
+                unit="kp",
+            ),
+            SolarCondition(
+                provider_id=provider.id,
+                observation_type="kp_index",
+                observed_at=datetime(2026, 9, 23, 12, 35, tzinfo=UTC),
+                value=4.0,
+                unit="kp",
+            ),
+            SolarCondition(
+                provider_id=provider.id,
+                observation_type="kp_index",
+                observed_at=datetime(2026, 9, 23, 12, 45, tzinfo=UTC),
+                value=None,
+                unit="kp",
+            ),
+        ]
+    )
+    db_session.flush()
+
+    service = StatisticsService(db_session)
+
+    rollups = service.get_solar_rollups(
+        start_time=datetime(2026, 9, 23, 12, tzinfo=UTC),
+        end_time=datetime(2026, 9, 23, 13, tzinfo=UTC),
+        resolution="hour",
+        observation_type="kp_index",
+    )
+
+    assert len(rollups) == 1
+    assert rollups[0].bucket_start == datetime(
+        2026,
+        9,
+        23,
+        12,
+        tzinfo=UTC,
+    )
+    assert rollups[0].average_value == 3.0
