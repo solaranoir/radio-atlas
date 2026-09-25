@@ -19,7 +19,7 @@ dependencies = [
     "redis",
     "alembic",
     "asyncpg",
-    "sqlalchemy",
+    "sqlalchemy==2.0.52",
 ]
 
 [project.optional-dependencies]
