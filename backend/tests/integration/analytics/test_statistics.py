@@ -1,8 +1,12 @@
 from datetime import UTC, datetime
 
+import pytest
 from sqlalchemy.orm import Session
 
-from app.analytics.aggregation.jobs import run_hourly_aggregation
+from app.analytics.aggregation.jobs import (
+    run_hourly_aggregation,
+    run_hourly_backfill,
+)
 from app.analytics.statistics.service import StatisticsService
 from app.infrastructure.database.models import Provider, SolarCondition, Spot
 
@@ -175,21 +179,21 @@ def test_statistics_service_averages_solar_values_by_hour(
         [
             SolarCondition(
                 provider_id=provider.id,
-                observation_type="kp_index",
+                observation_type="statistics_test_kp_index",
                 observed_at=datetime(2026, 9, 23, 12, 5, tzinfo=UTC),
                 value=2.0,
                 unit="kp",
             ),
             SolarCondition(
                 provider_id=provider.id,
-                observation_type="kp_index",
+                observation_type="statistics_test_kp_index",
                 observed_at=datetime(2026, 9, 23, 12, 35, tzinfo=UTC),
                 value=4.0,
                 unit="kp",
             ),
             SolarCondition(
                 provider_id=provider.id,
-                observation_type="kp_index",
+                observation_type="statistics_test_kp_index",
                 observed_at=datetime(2026, 9, 23, 12, 45, tzinfo=UTC),
                 value=None,
                 unit="kp",
@@ -204,7 +208,7 @@ def test_statistics_service_averages_solar_values_by_hour(
         start_time=datetime(2026, 9, 23, 12, tzinfo=UTC),
         end_time=datetime(2026, 9, 23, 13, tzinfo=UTC),
         resolution="hour",
-        observation_type="kp_index",
+        observation_type="statistics_test_kp_index",
     )
 
     assert len(rollups) == 1
@@ -216,3 +220,162 @@ def test_statistics_service_averages_solar_values_by_hour(
         tzinfo=UTC,
     )
     assert rollups[0].average_value == 3.0
+
+
+def test_statistics_service_calculates_from_seeded_historical_data(
+    db_session: Session,
+) -> None:
+    provider = Provider(
+        name="statistics_history_provider",
+        display_name="Statistics History Provider",
+        provider_type="spot",
+    )
+
+    db_session.add(provider)
+    db_session.flush()
+
+    observations = [
+        (1, "KK7QEA", "DL4JC", -10, 12, 5),
+        (2, "W1AW", "EA5JLN", -20, 12, 20),
+        (3, "KK7QEA", "W1AW", -5, 13, 10),
+        (4, "DL4JC", "KK7QEA", -15, 14, 5),
+        (5, "EA5JLN", "W1AW", -10, 14, 20),
+        (6, "W1AW", "DL4JC", -5, 14, 40),
+    ]
+
+    for sequence, sender, receiver, snr, hour, minute in observations:
+        db_session.add(
+            Spot(
+                provider_id=provider.id,
+                sequence_number=sequence,
+                sender_callsign=sender,
+                receiver_callsign=receiver,
+                frequency_hz=14_074_000,
+                band="20m",
+                mode="FT8",
+                snr_db=snr,
+                observed_at=datetime(
+                    2026,
+                    9,
+                    20,
+                    hour,
+                    minute,
+                    tzinfo=UTC,
+                ),
+            )
+        )
+
+    solar_provider = Provider(
+        name="statistics_seeded_history_solar_provider",
+        display_name="Statistics History Solar Provider",
+        provider_type="solar",
+    )
+
+    db_session.add(solar_provider)
+    db_session.flush()
+
+    db_session.add_all(
+        [
+            SolarCondition(
+                provider_id=solar_provider.id,
+                observation_type="statistics_test_kp_index",
+                observed_at=datetime(2026, 9, 20, 12, 30, tzinfo=UTC),
+                value=1.0,
+                unit="kp",
+            ),
+            SolarCondition(
+                provider_id=solar_provider.id,
+                observation_type="statistics_test_kp_index",
+                observed_at=datetime(2026, 9, 20, 13, 30, tzinfo=UTC),
+                value=2.0,
+                unit="kp",
+            ),
+            SolarCondition(
+                provider_id=solar_provider.id,
+                observation_type="statistics_test_kp_index",
+                observed_at=datetime(2026, 9, 20, 14, 30, tzinfo=UTC),
+                value=3.0,
+                unit="kp",
+            ),
+        ]
+    )
+    db_session.flush()
+
+    start_time = datetime(2026, 9, 20, 12, tzinfo=UTC)
+    end_time = datetime(2026, 9, 20, 15, tzinfo=UTC)
+
+    run_hourly_backfill(
+        db_session,
+        start_time=start_time,
+        end_time=end_time,
+    )
+    db_session.flush()
+
+    service = StatisticsService(db_session)
+
+    rollups = service.get_band_rollups(
+        start_time=start_time,
+        end_time=end_time,
+        resolution="hour",
+        band="20m",
+        mode="FT8",
+    )
+
+    assert len(rollups) == 3
+    assert [rollup.observation_count for rollup in rollups] == [
+        2,
+        1,
+        3,
+    ]
+    assert [rollup.snr_sample_count for rollup in rollups] == [
+        2,
+        1,
+        3,
+    ]
+
+    assert [rollup.snr_avg_db for rollup in rollups] == [
+        -15.0,
+        -5.0,
+        -10.0,
+    ]
+
+    statistics = service.calculate_band_statistics(
+        rollups=[rollups[0]],
+        baseline_counts=[],
+        expected_baseline_bucket_count=24,
+    )
+
+    assert statistics.activity.observation_count == 2
+    assert statistics.activity.active_station_count == 4
+
+    assert statistics.signal_quality.snr_sample_count == 2
+    assert statistics.signal_quality.snr_coverage == 1.0
+    assert statistics.signal_quality.average_snr_db == -15.0
+    assert statistics.signal_quality.minimum_snr_db == -20
+    assert statistics.signal_quality.maximum_snr_db == -10
+
+    sparse_statistics = service.get_band_statistics(
+        bucket_start=datetime(2026, 9, 20, 14, tzinfo=UTC),
+        bucket_end=datetime(2026, 9, 20, 15, tzinfo=UTC),
+        resolution="hour",
+        band="20m",
+        mode="FT8",
+    )
+
+    assert sparse_statistics.activity.baseline_observation_count == 0.125
+    assert sparse_statistics.activity.opening_strength == 24.0
+
+    correlations = service.get_solar_correlations(
+        start_time=start_time,
+        end_time=end_time,
+        resolution="hour",
+        observation_type="statistics_test_kp_index",
+        band="20m",
+        mode="FT8",
+    )
+
+    assert correlations.activity.sample_count == 3
+    assert correlations.activity.correlation == pytest.approx(0.5)
+
+    assert correlations.signal_quality.sample_count == 3
+    assert correlations.signal_quality.correlation == pytest.approx(0.5)
