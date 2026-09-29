@@ -1,12 +1,6 @@
-**SOLARASPHERE · RADIO ATLAS**
-
 Story 4.1: Timeline Data Model Design
 
 *Software Architecture Decision & Implementation Contract*
-
-Phase 3 · Analytics and Replay  
-Prepared from the supplied backend repository artifacts · 29 September
-2026
 
 **Decision in one line**
 
