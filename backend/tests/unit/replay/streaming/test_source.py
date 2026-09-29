@@ -1,7 +1,7 @@
-import pytest
-
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
+
+import pytest
 
 from app.infrastructure.database.models import Spot
 from app.replay.streaming.models import ReplayActivityBucket
@@ -66,6 +66,7 @@ def test_fetch_page_forwards_keyset_cursor() -> None:
         cursor_id=42,
     )
 
+
 def test_fetch_page_has_no_next_cursor_when_page_is_not_full() -> None:
     session = MagicMock()
 
@@ -95,6 +96,7 @@ def test_fetch_page_has_no_next_cursor_when_page_is_not_full() -> None:
     assert page.observations == [observation]
     assert page.next_cursor is None
 
+
 @pytest.mark.parametrize("limit", [0, -1])
 def test_fetch_page_rejects_non_positive_limit(limit: int) -> None:
     session = MagicMock()
@@ -106,6 +108,7 @@ def test_fetch_page_rejects_non_positive_limit(limit: int) -> None:
             end_time=datetime(2026, 9, 1, 13, 0, tzinfo=UTC),
             limit=limit,
         )
+
 
 def test_fetch_activity_buckets_returns_rollup_activity() -> None:
     session = MagicMock()

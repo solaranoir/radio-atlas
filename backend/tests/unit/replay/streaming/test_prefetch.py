@@ -44,6 +44,7 @@ def test_prefetcher_fetches_next_page_using_cursor() -> None:
         cursor_id=cursor.observation_id,
     )
 
+
 def test_prefetcher_buffers_next_page() -> None:
     source = MagicMock()
 
@@ -87,6 +88,7 @@ def test_prefetcher_buffers_next_page() -> None:
     assert page == first_page
     assert prefetcher.buffered_page == second_page
     assert source.fetch_page.call_count == 2
+
 
 def test_prefetcher_returns_buffered_page_without_refetching_it() -> None:
     source = MagicMock()
@@ -138,6 +140,7 @@ def test_prefetcher_returns_buffered_page_without_refetching_it() -> None:
     assert returned_second == second_page
     assert source.fetch_page.call_count == 2
 
+
 def test_prefetcher_does_not_use_buffer_after_window_changes() -> None:
     source = MagicMock()
 
@@ -180,6 +183,7 @@ def test_prefetcher_does_not_use_buffer_after_window_changes() -> None:
 
     assert returned_page == new_window_page
     assert source.fetch_page.call_count == 3
+
 
 def test_prefetcher_does_not_use_buffer_after_cursor_changes() -> None:
     source = MagicMock()
