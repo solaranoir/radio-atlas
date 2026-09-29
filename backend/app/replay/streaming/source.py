@@ -2,7 +2,6 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.infrastructure.database.models import Spot
 from app.replay.streaming.models import (
     ReplayActivityBucket,
     ReplayCursor,
@@ -33,7 +32,7 @@ class ReplayObservationSource:
         query = build_replay_observations_query(
             start_time=start_time,
             end_time=end_time,
-            limit=limit,
+            limit=limit + 1,
             cursor_time=cursor_time,
             cursor_id=cursor_id,
         )
@@ -41,7 +40,7 @@ class ReplayObservationSource:
         results = list(self._session.scalars(query).all())
 
         has_more = len(results) > limit
-        observations = results[:limit] 
+        observations = results[:limit]
         next_cursor = None
 
         if has_more and observations:
@@ -76,4 +75,3 @@ class ReplayObservationSource:
             )
             for bucket_start, observation_count in rows
         ]
-

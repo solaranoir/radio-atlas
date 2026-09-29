@@ -33,6 +33,7 @@ class ReplayObservationPrefetcher:
         )
 
         if buffer_matches_request:
+            assert self.buffered_page is not None
             page = self.buffered_page
         else:
             page = self._source.fetch_page(
