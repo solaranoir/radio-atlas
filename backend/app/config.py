@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     radio_atlas_log_level: str = "INFO"
     radio_atlas_database_url: str
     radio_atlas_redis_url: str = "redis://localhost:6379/0"
+    radio_atlas_replay_session_ttl_seconds: int = 86400
     noaa_base_url: str = "https://services.swpc.noaa.gov"
     psk_reporter_base_url: str = ""
     psk_reporter_mqtt_host: str = "mqtt.pskreporter.info"

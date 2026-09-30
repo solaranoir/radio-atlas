@@ -657,3 +657,42 @@ class AnalyticsStationDaily(Base):
             "station_id",
         ),
     )
+
+
+class ReplaySessionRecord(Base):
+    __tablename__ = "replay_sessions"
+
+    session_id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+    )
+    start_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    end_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    position: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    state: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+    speed: Mapped[float] = mapped_column(
+        Double,
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+    __table_args__ = (Index("ix_replay_sessions_updated_at", "updated_at"),)
