@@ -62,3 +62,9 @@ class ReplayObservationPrefetcher:
             self._buffered_cursor = page.next_cursor
 
         return page
+
+    def clear(self) -> None:
+        self.buffered_page = None
+        self._buffered_start_time = None
+        self._buffered_end_time = None
+        self._buffered_cursor = None
