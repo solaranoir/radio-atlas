@@ -234,3 +234,41 @@ def test_prefetcher_does_not_use_buffer_after_cursor_changes() -> None:
 
     assert returned_page == seek_page
     assert source.fetch_page.call_count == 3
+
+def test_prefetcher_clear_discards_buffered_page() -> None:
+    source = MagicMock()
+
+    cursor = ReplayCursor(
+        observed_at=datetime(2026, 9, 1, 12, 30, tzinfo=UTC),
+        observation_id=42,
+    )
+
+    first_page = ReplayObservationPage(
+        observations=[],
+        next_cursor=cursor,
+    )
+    buffered_page = ReplayObservationPage(
+        observations=[],
+        next_cursor=None,
+    )
+
+    source.fetch_page.side_effect = [
+        first_page,
+        buffered_page,
+    ]
+
+    prefetcher = ReplayObservationPrefetcher(
+        source=source,
+        page_size=100,
+    )
+
+    prefetcher.fetch_next(
+        start_time=datetime(2026, 9, 1, 12, 0, tzinfo=UTC),
+        end_time=datetime(2026, 9, 1, 13, 0, tzinfo=UTC),
+    )
+
+    assert prefetcher.buffered_page == buffered_page
+
+    prefetcher.clear()
+
+    assert prefetcher.buffered_page is None
