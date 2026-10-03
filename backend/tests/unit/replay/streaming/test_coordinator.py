@@ -2,8 +2,9 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 from app.replay.session.models import ReplaySession
-from app.replay.streaming.models import ReplayCursor, ReplayObservationPage
 from app.replay.streaming.coordinator import ReplayStreamCoordinator
+from app.replay.streaming.models import ReplayCursor, ReplayObservationPage
+
 
 def test_advance_fetches_observations_for_advanced_window() -> None:
     replay_session = ReplaySession.create(
@@ -49,6 +50,7 @@ def test_advance_fetches_observations_for_advanced_window() -> None:
         end_time=datetime(2026, 9, 1, 10, 0, 10, tzinfo=UTC),
     )
 
+
 def test_advance_does_not_fetch_when_session_is_paused() -> None:
     replay_session = ReplaySession.create(
         session_id="test-session",
@@ -75,6 +77,7 @@ def test_advance_does_not_fetch_when_session_is_paused() -> None:
     )
     assert replay_session.position == replay_session.start_time
     prefetcher.fetch_next.assert_not_called()
+
 
 def test_advance_clamps_fetch_window_at_session_end() -> None:
     replay_session = ReplaySession.create(
@@ -112,6 +115,8 @@ def test_advance_clamps_fetch_window_at_session_end() -> None:
         start_time=datetime(2026, 9, 1, 10, 0, tzinfo=UTC),
         end_time=replay_session.end_time,
     )
+
+
 def test_advance_fetches_all_pages_in_window() -> None:
     replay_session = ReplaySession.create(
         session_id="test-session",
@@ -173,6 +178,7 @@ def test_advance_fetches_all_pages_in_window() -> None:
     )
     assert prefetcher.fetch_next.call_count == 2
 
+
 def test_seek_clears_prefetched_observations() -> None:
     prefetcher = MagicMock()
 
@@ -183,6 +189,7 @@ def test_seek_clears_prefetched_observations() -> None:
     coordinator.handle_seek()
 
     prefetcher.clear.assert_called_once_with()
+
 
 def test_fetch_window_retrieves_observations_without_advancing_session() -> None:
     start_time = datetime(2026, 9, 1, 10, 0, tzinfo=UTC)

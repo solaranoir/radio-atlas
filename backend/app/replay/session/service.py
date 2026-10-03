@@ -122,7 +122,7 @@ class ReplaySessionService:
         return replay_session
 
     def set_session_speed(
-       self,
+        self,
         session_id: str,
         *,
         speed: float,

@@ -1,5 +1,5 @@
 from datetime import UTC, datetime, timedelta
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,7 @@ def test_service_accepts_database_session() -> None:
     service = ReplaySessionService(db)
 
     assert service._session is db
+
 
 def test_create_session_initializes_replay_session() -> None:
     db = Mock(spec=Session)
@@ -37,13 +38,12 @@ def test_create_session_initializes_replay_session() -> None:
     assert replay_session.updated_at == NOW
     assert replay_session.session_id
 
+
 def test_create_session_persists_session() -> None:
     db = Mock(spec=Session)
     service = ReplaySessionService(db)
 
-    with patch(
-        "app.replay.session.service.save_replay_session"
-    ) as save_replay_session:
+    with patch("app.replay.session.service.save_replay_session") as save_replay_session:
         replay_session = service.create_session(
             start_time=datetime(2026, 9, 1, 10, 0, tzinfo=UTC),
             end_time=datetime(2026, 9, 1, 11, 0, tzinfo=UTC),
@@ -55,13 +55,12 @@ def test_create_session_persists_session() -> None:
         replay_session,
     )
 
+
 def test_create_session_commits_transaction() -> None:
     db = Mock(spec=Session)
     service = ReplaySessionService(db)
 
-    with patch(
-        "app.replay.session.service.save_replay_session"
-    ):
+    with patch("app.replay.session.service.save_replay_session"):
         service.create_session(
             start_time=datetime(2026, 9, 1, 10, 0, tzinfo=UTC),
             end_time=datetime(2026, 9, 1, 11, 0, tzinfo=UTC),
@@ -69,6 +68,7 @@ def test_create_session_commits_transaction() -> None:
         )
 
     db.commit.assert_called_once_with()
+
 
 def test_get_session_returns_persisted_session() -> None:
     db = Mock(spec=Session)
@@ -93,6 +93,7 @@ def test_get_session_returns_persisted_session() -> None:
         "test-session",
     )
 
+
 def test_play_session_updates_and_persists_session() -> None:
     db = Mock(spec=Session)
     service = ReplaySessionService(db)
@@ -110,9 +111,7 @@ def test_play_session_updates_and_persists_session() -> None:
             "app.replay.session.service.get_replay_session",
             return_value=replay_session,
         ),
-        patch(
-            "app.replay.session.service.save_replay_session"
-        ) as save_replay_session,
+        patch("app.replay.session.service.save_replay_session") as save_replay_session,
     ):
         result = service.play_session(
             "test-session",
@@ -127,6 +126,7 @@ def test_play_session_updates_and_persists_session() -> None:
         replay_session,
     )
     db.commit.assert_called_once_with()
+
 
 def test_pause_session_updates_and_persists_session() -> None:
     db = Mock(spec=Session)
@@ -147,9 +147,7 @@ def test_pause_session_updates_and_persists_session() -> None:
             "app.replay.session.service.get_replay_session",
             return_value=replay_session,
         ),
-        patch(
-            "app.replay.session.service.save_replay_session"
-        ) as save_replay_session,
+        patch("app.replay.session.service.save_replay_session") as save_replay_session,
     ):
         result = service.pause_session(
             "test-session",
@@ -164,6 +162,7 @@ def test_pause_session_updates_and_persists_session() -> None:
         replay_session,
     )
     db.commit.assert_called_once_with()
+
 
 def test_seek_session_updates_and_persists_position() -> None:
     db = Mock(spec=Session)
@@ -183,9 +182,7 @@ def test_seek_session_updates_and_persists_position() -> None:
             "app.replay.session.service.get_replay_session",
             return_value=replay_session,
         ),
-        patch(
-            "app.replay.session.service.save_replay_session"
-        ) as save_replay_session,
+        patch("app.replay.session.service.save_replay_session") as save_replay_session,
     ):
         result = service.seek_session(
             "test-session",
@@ -201,6 +198,7 @@ def test_seek_session_updates_and_persists_position() -> None:
         replay_session,
     )
     db.commit.assert_called_once_with()
+
 
 def test_set_session_speed_updates_and_persists_speed() -> None:
     db = Mock(spec=Session)
@@ -219,9 +217,7 @@ def test_set_session_speed_updates_and_persists_speed() -> None:
             "app.replay.session.service.get_replay_session",
             return_value=replay_session,
         ),
-        patch(
-            "app.replay.session.service.save_replay_session"
-        ) as save_replay_session,
+        patch("app.replay.session.service.save_replay_session") as save_replay_session,
     ):
         result = service.set_session_speed(
             "test-session",
@@ -237,6 +233,7 @@ def test_set_session_speed_updates_and_persists_speed() -> None:
         replay_session,
     )
     db.commit.assert_called_once_with()
+
 
 def test_advance_session_persists_updated_position() -> None:
     replay_session = ReplaySession.create(

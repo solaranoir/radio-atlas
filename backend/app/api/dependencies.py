@@ -33,10 +33,12 @@ def get_statistics_service(
         cache=cache,
     )
 
+
 def get_replay_session_service(
     session: Annotated[Session, Depends(get_db)],
 ) -> ReplaySessionService:
     return ReplaySessionService(session)
+
 
 def get_replay_stream_coordinator(
     session: Annotated[Session, Depends(get_db)],
