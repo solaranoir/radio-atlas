@@ -43,7 +43,11 @@ def get_replay_session(
     db: Session,
     session_id: str,
 ) -> ReplaySession | None:
-    statement = select(ReplaySessionRecord).where(ReplaySessionRecord.session_id == session_id)
+    statement = (
+        select(ReplaySessionRecord)
+        .where(ReplaySessionRecord.session_id == session_id)
+        .execution_options(populate_existing=True)
+    )
     record = db.scalar(statement)
 
     if record is None:

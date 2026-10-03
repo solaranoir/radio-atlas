@@ -69,5 +69,4 @@ class ReplayStreamCoordinator:
         return ReplayObservationPage(
             observations=observations,
             next_cursor=None,
-            )
-
+        )

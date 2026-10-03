@@ -79,6 +79,7 @@ def test_tick_advances_session_and_fetches_advanced_window() -> None:
         end_time=advanced_session.position,
     )
 
+
 def test_tick_does_not_advance_paused_session() -> None:
     service = Mock(spec=ReplaySessionService)
     coordinator = Mock(spec=ReplayStreamCoordinator)
@@ -104,6 +105,7 @@ def test_tick_does_not_advance_paused_session() -> None:
     service.advance_session.assert_not_called()
     coordinator.fetch_window.assert_not_called()
 
+
 def test_tick_returns_none_when_session_no_longer_exists() -> None:
     service = Mock(spec=ReplaySessionService)
     coordinator = Mock(spec=ReplayStreamCoordinator)
@@ -121,3 +123,34 @@ def test_tick_returns_none_when_session_no_longer_exists() -> None:
     assert result is None
     service.advance_session.assert_not_called()
     coordinator.fetch_window.assert_not_called()
+
+
+def test_tick_clears_prefetch_when_position_changed() -> None:
+    service = Mock(spec=ReplaySessionService)
+    coordinator = Mock(spec=ReplayStreamCoordinator)
+
+    replay_session = ReplaySession.create(
+        session_id="test-session",
+        start_time=datetime(2026, 9, 1, 10, 0, tzinfo=UTC),
+        end_time=datetime(2026, 9, 1, 11, 0, tzinfo=UTC),
+        now=datetime(2026, 9, 30, 12, 0, tzinfo=UTC),
+    )
+    replay_session.seek(
+        datetime(2026, 9, 1, 10, 30, tzinfo=UTC),
+        now=datetime(2026, 9, 30, 12, 1, tzinfo=UTC),
+    )
+
+    service.get_session.return_value = replay_session
+
+    result = run_replay_stream_tick(
+        session_id="test-session",
+        elapsed=timedelta(seconds=1),
+        now=datetime(2026, 9, 30, 12, 2, tzinfo=UTC),
+        service=service,
+        coordinator=coordinator,
+        expected_position=datetime(2026, 9, 1, 10, 0, tzinfo=UTC),
+    )
+
+    assert result is None
+    coordinator.handle_seek.assert_called_once_with()
+    service.advance_session.assert_not_called()

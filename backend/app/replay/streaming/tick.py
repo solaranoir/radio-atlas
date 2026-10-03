@@ -10,6 +10,7 @@ from app.replay.streaming.models import ReplayObservationPage
 @dataclass(frozen=True)
 class ReplayStreamTick:
     position: datetime
+    state: ReplayState
     page: ReplayObservationPage
 
 
@@ -20,11 +21,15 @@ def run_replay_stream_tick(
     now: datetime,
     service: ReplaySessionService,
     coordinator: ReplayStreamCoordinator,
+    expected_position: datetime | None = None,
 ) -> ReplayStreamTick | None:
     replay_session = service.get_session(session_id)
 
     if replay_session is None:
         return None
+
+    if expected_position is not None and replay_session.position != expected_position:
+        coordinator.handle_seek()
 
     if replay_session.state is not ReplayState.PLAYING:
         return None
@@ -55,5 +60,6 @@ def run_replay_stream_tick(
 
     return ReplayStreamTick(
         position=window_end,
+        state=advanced_session.state,
         page=page,
     )

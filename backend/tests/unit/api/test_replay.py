@@ -1,8 +1,7 @@
+from datetime import UTC, datetime, timedelta
+from unittest.mock import Mock, patch
+
 import pytest
-
-from datetime import UTC, datetime
-from unittest.mock import Mock
-
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
@@ -10,10 +9,14 @@ from app.api.dependencies import (
     get_replay_session_service,
     get_replay_stream_coordinator,
 )
+from app.infrastructure.database.models import Spot
 from app.main import create_app
-from app.replay.session.models import ReplaySession
+from app.replay.session.models import ReplaySession, ReplayState
 from app.replay.session.service import ReplaySessionService
 from app.replay.streaming.coordinator import ReplayStreamCoordinator
+from app.replay.streaming.models import ReplayObservationPage
+from app.replay.streaming.tick import ReplayStreamTick
+
 
 def _client(
     service: ReplaySessionService,
@@ -26,6 +29,7 @@ def _client(
         app.dependency_overrides[get_replay_stream_coordinator] = lambda: coordinator
 
     return TestClient(app)
+
 
 def test_create_replay_session_returns_201() -> None:
     service = Mock(spec=ReplaySessionService)
@@ -79,6 +83,7 @@ def test_create_replay_session_returns_201() -> None:
         "updated_at": "2026-09-30T12:00:00Z",
     }
 
+
 def test_get_replay_session_returns_session() -> None:
     service = Mock(spec=ReplaySessionService)
     service.get_session.return_value = ReplaySession.create(
@@ -98,6 +103,7 @@ def test_get_replay_session_returns_session() -> None:
     assert response.json()["session_id"] == "test-session"
     service.get_session.assert_called_once_with("test-session")
 
+
 def test_get_replay_session_returns_404_when_missing() -> None:
     service = Mock(spec=ReplaySessionService)
     service.get_session.return_value = None
@@ -116,9 +122,10 @@ def test_get_replay_session_returns_404_when_missing() -> None:
         "missing-session",
     )
 
+
 def test_patch_replay_session_plays_session() -> None:
     service = Mock(spec=ReplaySessionService)
-            
+
     replay_session = ReplaySession.create(
         session_id="test-session",
         start_time=datetime(2026, 9, 1, 10, 0, tzinfo=UTC),
@@ -131,23 +138,24 @@ def test_patch_replay_session_plays_session() -> None:
     service.play_session.return_value = replay_session
 
     client = _client(service)
-           
+
     response = client.patch(
         "/api/v1/replay/sessions/test-session",
         json={
             "action": "play",
         },
     )
-    
+
     assert response.status_code == 200
     assert response.json()["state"] == "playing"
-        
+
     service.play_session.assert_called_once()
     call = service.play_session.call_args
-     
+
     assert call.args == ("test-session",)
     assert call.kwargs["now"].tzinfo is UTC
-     
+
+
 def test_patch_replay_session_pauses_session() -> None:
     service = Mock(spec=ReplaySessionService)
 
@@ -182,6 +190,7 @@ def test_patch_replay_session_pauses_session() -> None:
 
     assert call.args == ("test-session",)
     assert call.kwargs["now"].tzinfo is UTC
+
 
 def test_patch_replay_session_seeks_session() -> None:
     service = Mock(spec=ReplaySessionService)
@@ -218,6 +227,8 @@ def test_patch_replay_session_seeks_session() -> None:
     assert call.args == ("test-session",)
     assert call.kwargs["position"] == position
     assert call.kwargs["now"].tzinfo is UTC
+
+
 def test_patch_replay_session_sets_speed() -> None:
     service = Mock(spec=ReplaySessionService)
 
@@ -253,6 +264,7 @@ def test_patch_replay_session_sets_speed() -> None:
     assert call.kwargs["speed"] == 2.0
     assert call.kwargs["now"].tzinfo is UTC
 
+
 def test_patch_replay_session_seek_requires_position() -> None:
     service = Mock(spec=ReplaySessionService)
     client = _client(service)
@@ -270,6 +282,7 @@ def test_patch_replay_session_seek_requires_position() -> None:
     }
     service.seek_session.assert_not_called()
 
+
 def test_patch_replay_session_speed_requires_value() -> None:
     service = Mock(spec=ReplaySessionService)
     client = _client(service)
@@ -286,6 +299,7 @@ def test_patch_replay_session_speed_requires_value() -> None:
         "detail": "Speed is required for speed change",
     }
     service.set_session_speed.assert_not_called()
+
 
 def test_patch_replay_session_rejects_unsupported_action() -> None:
     service = Mock(spec=ReplaySessionService)
@@ -308,6 +322,7 @@ def test_patch_replay_session_rejects_unsupported_action() -> None:
     service.seek_session.assert_not_called()
     service.set_session_speed.assert_not_called()
 
+
 def test_replay_websocket_accepts_valid_session() -> None:
     service = Mock(spec=ReplaySessionService)
 
@@ -321,9 +336,7 @@ def test_replay_websocket_accepts_valid_session() -> None:
 
     client = _client(service)
 
-    with client.websocket_connect(
-        "/api/v1/replay/sessions/test-session/stream"
-    ) as websocket:
+    with client.websocket_connect("/api/v1/replay/sessions/test-session/stream") as websocket:
         message = websocket.receive_json()
 
     assert message["type"] == "session"
@@ -333,6 +346,7 @@ def test_replay_websocket_accepts_valid_session() -> None:
 
     service.get_session.assert_called_once_with("test-session")
 
+
 def test_replay_websocket_closes_for_missing_session() -> None:
     service = Mock(spec=ReplaySessionService)
     service.get_session.return_value = None
@@ -340,9 +354,7 @@ def test_replay_websocket_closes_for_missing_session() -> None:
     client = _client(service)
 
     with (
-        client.websocket_connect(
-            "/api/v1/replay/sessions/missing-session/stream"
-        ) as websocket,
+        client.websocket_connect("/api/v1/replay/sessions/missing-session/stream") as websocket,
         pytest.raises(WebSocketDisconnect) as exc_info,
     ):
         websocket.receive_json()
@@ -350,3 +362,92 @@ def test_replay_websocket_closes_for_missing_session() -> None:
     assert exc_info.value.code == 1008
     service.get_session.assert_called_once_with("missing-session")
 
+
+def test_replay_websocket_streams_playback_tick() -> None:
+    service = Mock(spec=ReplaySessionService)
+    coordinator = Mock(spec=ReplayStreamCoordinator)
+
+    replay_session = ReplaySession.create(
+        session_id="test-session",
+        start_time=datetime(2026, 9, 1, 10, 0, tzinfo=UTC),
+        end_time=datetime(2026, 9, 1, 11, 0, tzinfo=UTC),
+        now=datetime(2026, 9, 30, 12, 0, tzinfo=UTC),
+    )
+    replay_session.play(
+        now=datetime(2026, 9, 30, 12, 1, tzinfo=UTC),
+    )
+    service.get_session.return_value = replay_session
+
+    observation = Spot(
+        id=42,
+        provider_id=1,
+        sequence_number=12345,
+        sender_station_id=10,
+        receiver_station_id=20,
+        sender_callsign="KK7QEA",
+        receiver_callsign="W1AW",
+        sender_grid="DM25",
+        receiver_grid="FN31",
+        frequency_hz=14_074_000,
+        band="20m",
+        mode="FT8",
+        snr_db=-12,
+        observed_at=datetime(2026, 9, 1, 10, 0, 0, 500000, tzinfo=UTC),
+        transmitted_at=datetime(2026, 9, 1, 10, 0, tzinfo=UTC),
+        sender_entity_id=None,
+        receiver_entity_id=None,
+    )
+    tick = ReplayStreamTick(
+        position=datetime(2026, 9, 1, 10, 0, 1, tzinfo=UTC),
+        page=ReplayObservationPage(
+            observations=[observation],
+            next_cursor=None,
+        ),
+        state=ReplayState.PLAYING,
+    )
+
+    client = _client(service, coordinator)
+
+    with (
+        patch(
+            "app.api.routes.replay.REPLAY_STREAM_TICK_INTERVAL",
+            timedelta(milliseconds=1),
+        ),
+        patch(
+            "app.api.routes.replay.run_replay_stream_tick",
+            return_value=tick,
+        ),
+        client.websocket_connect("/api/v1/replay/sessions/test-session/stream") as websocket,
+    ):
+        session_message = websocket.receive_json()
+        observation_message = websocket.receive_json()
+
+    assert session_message["type"] == "session"
+
+    assert observation_message == {
+        "type": "observations",
+        "session_id": "test-session",
+        "state": "playing",
+        "position": "2026-09-01T10:00:01+00:00",
+        "observations": [
+            {
+                "id": 42,
+                "provider_id": 1,
+                "sequence_number": 12345,
+                "sender_station_id": 10,
+                "receiver_station_id": 20,
+                "sender_callsign": "KK7QEA",
+                "receiver_callsign": "W1AW",
+                "sender_grid": "DM25",
+                "receiver_grid": "FN31",
+                "frequency_hz": 14_074_000,
+                "band": "20m",
+                "mode": "FT8",
+                "snr_db": -12,
+                "observed_at": "2026-09-01T10:00:00.500000Z",
+                "transmitted_at": "2026-09-01T10:00:00Z",
+                "sender_entity_id": None,
+                "receiver_entity_id": None,
+            }
+        ],
+    }

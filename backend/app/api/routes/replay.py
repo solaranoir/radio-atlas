@@ -1,22 +1,37 @@
-from datetime import UTC, datetime
+import asyncio
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from pydantic import BaseModel
 
-from app.api.dependencies import get_replay_session_service, get_replay_stream_coordinator
-from app.replay.streaming.coordinator import ReplayStreamCoordinator
+from app.api.dependencies import (
+    get_replay_session_service,
+    get_replay_stream_coordinator,
+)
 from app.replay.session.models import ReplaySession
 from app.replay.session.service import ReplaySessionService
+from app.replay.streaming.coordinator import ReplayStreamCoordinator
+from app.replay.streaming.tick import run_replay_stream_tick
 
 router = APIRouter(
     prefix="/replay",
     tags=["replay"],
 )
+REPLAY_STREAM_TICK_INTERVAL = timedelta(seconds=1)
+
 
 class CreateReplaySessionRequest(BaseModel):
     start_time: datetime
     end_time: datetime
+
 
 class ReplaySessionResponse(BaseModel):
     session_id: str
@@ -28,10 +43,12 @@ class ReplaySessionResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+
 class UpdateReplaySessionRequest(BaseModel):
     action: str
     position: datetime | None = None
     speed: float | None = None
+
 
 class ReplayObservationResponse(BaseModel):
     id: int
@@ -52,12 +69,12 @@ class ReplayObservationResponse(BaseModel):
     sender_entity_id: int | None
     receiver_entity_id: int | None
 
+
 @router.post(
     "/sessions",
     response_model=ReplaySessionResponse,
     status_code=status.HTTP_201_CREATED,
 )
-
 def create_replay_session(
     request: CreateReplaySessionRequest,
     service: Annotated[
@@ -70,6 +87,7 @@ def create_replay_session(
         end_time=request.end_time,
         now=datetime.now(UTC),
     )
+
 
 @router.get(
     "/sessions/{session_id}",
@@ -92,6 +110,7 @@ def get_replay_session(
 
     return replay_session
 
+
 @router.patch(
     "/sessions/{session_id}",
     response_model=ReplaySessionResponse,
@@ -113,7 +132,7 @@ def update_replay_session(
         replay_session = service.pause_session(
             session_id,
             now=datetime.now(UTC),
-         )
+        )
     elif request.action == "seek":
         if request.position is None:
             raise HTTPException(
@@ -152,6 +171,7 @@ def update_replay_session(
 
     return replay_session
 
+
 @router.websocket("/sessions/{session_id}/stream")
 async def stream_replay_session(
     websocket: WebSocket,
@@ -165,6 +185,7 @@ async def stream_replay_session(
         Depends(get_replay_stream_coordinator),
     ],
 ) -> None:
+
     replay_session = service.get_session(session_id)
 
     await websocket.accept()
@@ -181,3 +202,36 @@ async def stream_replay_session(
             "position": replay_session.position.isoformat(),
         }
     )
+    expected_position = replay_session.position
+    try:
+        while True:
+            await asyncio.sleep(REPLAY_STREAM_TICK_INTERVAL.total_seconds())
+            tick = run_replay_stream_tick(
+                session_id=session_id,
+                elapsed=REPLAY_STREAM_TICK_INTERVAL,
+                now=datetime.now(UTC),
+                service=service,
+                coordinator=coordinator,
+                expected_position=expected_position,
+            )
+            if tick is None:
+                continue
+            expected_position = tick.position
+
+            await websocket.send_json(
+                {
+                    "type": "observations",
+                    "session_id": session_id,
+                    "position": tick.position.isoformat(),
+                    "state": tick.state.value,
+                    "observations": [
+                        ReplayObservationResponse.model_validate(
+                            observation,
+                            from_attributes=True,
+                        ).model_dump(mode="json")
+                        for observation in tick.page.observations
+                    ],
+                }
+            )
+    except WebSocketDisconnect:
+        return

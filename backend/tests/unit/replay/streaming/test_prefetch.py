@@ -235,6 +235,7 @@ def test_prefetcher_does_not_use_buffer_after_cursor_changes() -> None:
     assert returned_page == seek_page
     assert source.fetch_page.call_count == 3
 
+
 def test_prefetcher_clear_discards_buffered_page() -> None:
     source = MagicMock()
 
