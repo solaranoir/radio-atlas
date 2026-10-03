@@ -1,0 +1,16 @@
+Other Articles:
+
+Physics-Motivated NmF2 Reconstruction Using O/N₂ and Solar EUV
+JGR: Space Physics, September 8, 2026
+This work reconstructs F2-layer peak electron density using deep learning while incorporating physically meaningful thermospheric composition and solar EUV information. AGU Journals
+Practical takeaway: Electron-density prediction improves conceptually when upstream physical drivers are represented rather than relying solely on proxy indices or historical electron-density observations.
+Why it matters for Radio Atlas: It reinforces a design principle worth protecting as your NOAA ingestion grows: store physical drivers independently, even if the current UI doesn't use them. Today's seemingly peripheral solar/thermospheric feature can become tomorrow's explanatory variable.
+
+
+Radio Signal Classification Benchmark: CNNs vs. Transformer Approaches
+IEEE BigDataService 2026, added August 24, 2026
+
+This benchmark compares ResNet-18, VGG, a custom CNN and a BERT-based transformer across the DeepSig RML2016/2018 datasets. CNN architectures performed strongest overall, while the authors emphasize how classification performance changes substantially with SNR. IEEE Xplore
+Practical takeaway: Don't evaluate SolaraSignal with a single aggregate classification accuracy. Performance should be stratified by SNR, modulation/signal class and ideally propagation conditions.
+Why it matters: Radio Atlas can eventually go further than standard RF-classification benchmarks because you have contextual features those datasets don't: solar conditions, path geometry, frequency, UTC/local solar time, geomagnetic activity and propagation history. That opens an interesting research question:
+Does ionospheric context improve RF signal classification beyond IQ/spectral features alone
