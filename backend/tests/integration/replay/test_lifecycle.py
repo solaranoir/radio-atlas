@@ -31,7 +31,7 @@ pytestmark = pytest.mark.integration
 def replay_api() -> Generator[tuple[TestClient, Engine, list[str]], None, None]:
     engine = create_engine(Settings().radio_atlas_database_url)
     assert engine.url.database == "radio_atlas_replay_test", (
-        "Use the disposable database from docker-compose.replay-tests.yml"
+        "Use the disposable radio_atlas_replay_test database configured by Compose or CI"
     )
     app = create_app()
     ids: list[str] = []
