@@ -45,7 +45,7 @@ def test_seek_preserves_microsecond_precision_and_transition_contract(
     replay_session.position = replay_session.end_time if state is ReplayState.COMPLETED else START
     target = START + timedelta(microseconds=offset_us)
     replay_session.seek(target, now=NOW + timedelta(seconds=1))
-    expected = ReplayState.PAUSED if state is ReplayState.COMPLETED else state
+    expected: ReplayState = ReplayState.PAUSED if state is ReplayState.COMPLETED else state
     if target == replay_session.end_time:
         expected = ReplayState.COMPLETED
     assert replay_session.position == target
