@@ -27,6 +27,11 @@ From the repository root, provide test PostgreSQL settings through the existing
 requires the database name `radio_atlas_replay_test`. The standalone Compose file exposes
 no host ports and uses a PostgreSQL tmpfs, separate from the development stack.
 
+Backend CI provisions its disposable PostgreSQL service with the same
+`radio_atlas_replay_test` database name. The service configuration, health check, and
+`RADIO_ATLAS_DATABASE_URL` must agree; the lifecycle fixture rejects other names before
+executing operations that commit or expire sessions.
+
 ```sh
 docker compose --env-file .env.example -p radio-atlas-story35 \
   -f docker-compose.replay-tests.yml build tests
