@@ -252,6 +252,10 @@ recomputing affected buckets without duplicating aggregate data.
 
 ## Phase 3 Consumers
 
+The [timeline data model](Timeline_Data_Model.md) specifies bounded display
+buckets, partial-boundary counting, and explicit band-resolved density coverage
+for the timeline consumer.
+
 The schema is designed to support:
 
 - band-opening statistics
