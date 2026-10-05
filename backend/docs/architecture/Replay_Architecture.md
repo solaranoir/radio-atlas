@@ -443,3 +443,10 @@ again fall ahead of the current historical position.
 
 Seeking changes historical position but does not implicitly start a paused
 session. A seek performed while playing preserves the `playing` state.
+
+## Replay verification
+
+[Phase 3 Story 3.5 test plan](../testing/Replay_Test_Plan.md) maps the replay
+contracts to unit, PostgreSQL-backed HTTP/WebSocket lifecycle, and concurrent
+session tests. It includes a reproducible isolated Docker harness and a sequence
+diagram for the persisted lifecycle and streaming flow.
