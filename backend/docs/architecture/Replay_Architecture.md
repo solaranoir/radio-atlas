@@ -2,6 +2,10 @@
 
 ## Purpose
 
+The [timeline data model](Timeline_Data_Model.md) defines density summaries and
+notable-activity markers for navigating replay history. Timeline resolution
+does not change the precise seek and playback semantics specified here.
+
 The Phase 3 replay engine provides deterministic historical playback of Radio
 Atlas observations across a requested UTC time range.
 
