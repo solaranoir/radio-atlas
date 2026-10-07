@@ -1,7 +1,8 @@
 # Timeline Contract Test Plan
 
-Phase 3 Story 4.1 is a design story. The following cases define verification
-for implementation in Stories 4.2–4.4; they are not tests already executed.
+Phase 3 Story 4.1 established these verification cases. Story 4.2 adds unit,
+HTTP contract, and PostgreSQL integration tests; frontend cases remain for
+Stories 4.3–4.4. Authored tests are not runtime verification until executed.
 Use deterministic synthetic UTC observations and disposable PostgreSQL in
 Docker. No live providers are needed.
 
@@ -59,6 +60,28 @@ visible timeline range.
 
 ## Verification record
 
-Story 4.1 changes documentation only. Check Markdown formatting, example JSON,
-integer bucket-cap calculations, local links, and whitespace before handoff.
-No runtime timeline tests or endpoint implementation are claimed by this plan.
+Story 4.2 adds `tests/unit/timeline/`, `tests/unit/api/test_timeline.py`, and
+`tests/integration/timeline/`. Tests cover threshold selection, exact interval
+coverage, peak rules, continuation invalidation, invalid requests, safe counts,
+boundary-query batching, and real raw/rollup queries using synthetic spots.
+
+Run the complete suite inside the existing disposable PostgreSQL harness:
+
+```sh
+docker compose --env-file .env.example -p radio-atlas-story42 \
+  -f docker-compose.replay-tests.yml run --build --rm tests \
+  /bin/sh -ec 'alembic upgrade head && ruff check . && ruff format --check . && mypy . && pytest --cov=app.timeline --cov-report=term-missing --cov-fail-under=85'
+docker compose --env-file .env.example -p radio-atlas-story42 \
+  -f docker-compose.replay-tests.yml down --volumes
+```
+
+The Compose filename is retained from Story 3.5; this invocation overrides its
+replay-only command and uses a separate project name. The database name remains
+compatible with the existing replay lifecycle safety guard.
+
+On 2026-10-06, agent-side Docker access was denied at
+`/Users/kellysimer/.docker/run/docker.sock`. Runtime tests, migrations, and measured
+timeline coverage remain unexecuted. Static formatting, lint, and type checks
+passed for the complete backend: `ruff check .`, `ruff format --check .`
+(176 files), and `mypy .` (165 source files). Git whitespace validation also
+passed. These checks do not establish a passing runtime suite.
