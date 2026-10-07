@@ -2,8 +2,8 @@
 
 Phase 3 Story 4.1 designs the density buckets, notable-activity markers, and
 transport contract needed to scrub the Radio Weather Globe across its full
-observation history. This is a design contract for Stories 4.2–4.4, not an
-implemented endpoint, migration, or frontend component.
+observation history. Story 4.2 implements the read endpoint described in
+[Timeline API](../api/Timeline_API.md); frontend scrubbing remains Story 4.3.
 
 ## Decision record
 
