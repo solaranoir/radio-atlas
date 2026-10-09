@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -12,6 +13,17 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    radio_atlas_cors_origins: list[str] = ["http://localhost:5173"]
+    radio_atlas_aggregation_enabled: bool = False
+
+    @field_validator("radio_atlas_database_url", mode="before")
+    @classmethod
+    def use_psycopg_driver(cls, value: str) -> str:
+        for prefix in ("postgres://", "postgresql://"):
+            if value.startswith(prefix):
+                return "postgresql+psycopg://" + value[len(prefix) :]
+        return value
 
     radio_atlas_env: str = "development"
     radio_atlas_log_level: str = "INFO"

@@ -1,0 +1,65 @@
+# Review paid service plans in Render before creating the Blueprint.
+services:
+  - type: web
+    name: radio-atlas-frontend
+    runtime: static
+    branch: main
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: VITE_API_BASE_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  - type: web
+    name: radio-atlas-api
+    runtime: docker
+    branch: main
+    region: oregon
+    plan: 0.5c-512mb
+    numInstances: 1
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    preDeployCommand: alembic upgrade head
+    healthCheckPath: /health
+    envVars:
+      - key: RADIO_ATLAS_ENV
+        value: production
+      - key: RADIO_ATLAS_LOG_LEVEL
+        value: INFO
+      - key: RADIO_ATLAS_DATABASE_URL
+        fromDatabase:
+          name: radio-atlas-db
+          property: connectionString
+      - key: RADIO_ATLAS_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: radio-atlas-cache
+          property: connectionString
+      - key: RADIO_ATLAS_CORS_ORIGINS
+        sync: false
+      - key: RADIO_ATLAS_AGGREGATION_ENABLED
+        value: "true"
+      - key: RUN_MIGRATIONS_ON_START
+        value: "false"
+
+  - type: keyvalue
+    name: radio-atlas-cache
+    region: oregon
+    plan: 256mb
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  - name: radio-atlas-db
+    region: oregon
+    plan: 0.1c-256mb
+    databaseName: radio_atlas
+    user: radio_atlas
+    diskSizeGB: 15
+    ipAllowList: []
