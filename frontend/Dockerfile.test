@@ -1,0 +1,6 @@
+FROM node:24-alpine
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+CMD ["/bin/sh", "-ec", "npm run lint && npm run build && npm run test:coverage -- --coverage.include=src/timeline/** --coverage.include=src/api/timeline.ts --coverage.include=src/api/replay.ts --coverage.exclude=src/timeline/testFixtures.ts --coverage.thresholds.lines=85 --coverage.thresholds.functions=85 --coverage.thresholds.statements=85"]

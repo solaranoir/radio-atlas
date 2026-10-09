@@ -1,4 +1,5 @@
 import { useMemo, useRef } from "react";
+import { TimelineScrubber } from "../../timeline/TimelineScrubber";
 
 import { filterObservations } from "../filters/filterObservations";
 import { useAnomalies } from "../hooks/useAnomalies";
@@ -193,6 +194,8 @@ export function GlobeRenderer() {
                 />
             }
             bottomPanel={
+                <>
+                <TimelineScrubber />
                 <div className="activity-panel">
                     <h2>Activity</h2>
 
@@ -207,6 +210,7 @@ export function GlobeRenderer() {
                         </span>
                     </div>
                 </div>
+                </>
             }
         />
     );
