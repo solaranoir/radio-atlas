@@ -147,3 +147,24 @@ def test_history_max_is_rejected() -> None:
     service.source.history_bounds = Mock(return_value=(START, datetime.max.replace(tzinfo=UTC)))  # type: ignore[method-assign]
     with pytest.raises(TimelineError, match="supported date"):
         service.timeline()
+
+
+@pytest.mark.parametrize(
+    "duration,resolution,bucket_seconds",
+    [
+        (timedelta(minutes=30), "minute", 60),
+        (timedelta(hours=12), "hour", 3600),
+        (timedelta(days=30), "day", 86400),
+    ],
+)
+def test_zoom_levels_select_resolution_and_preserve_window(
+    duration: timedelta, resolution: str, bucket_seconds: int
+) -> None:
+    end = START + duration
+    selected, seconds, intervals = plan_buckets(START, end, 128, "auto")
+    assert selected == resolution
+    assert seconds == bucket_seconds
+    assert len(intervals) <= 128
+    assert intervals[0][0] == START
+    assert intervals[-1][1] == end
+    assert all(left[1] == right[0] for left, right in zip(intervals, intervals[1:], strict=False))

@@ -1,0 +1,5 @@
+services:
+  tests:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.test

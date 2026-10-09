@@ -11,6 +11,7 @@ from fastapi.exceptions import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.analytics.aggregation.runtime import run_aggregation_runtime
 from app.api.errors import (
     APIError,
     api_error_handler,
@@ -20,6 +21,7 @@ from app.api.errors import (
 from app.api.middleware import request_id_middleware
 from app.api.router import api_router
 from app.api.routes.health import router as health_router
+from app.config import get_settings
 from app.ingestion.runtime import run_ingestion_runtime
 from app.logging.logger import configure_logging
 
@@ -33,9 +35,19 @@ async def lifespan(
         name="radio-atlas-ingestion",
     )
 
+    aggregation_task = (
+        asyncio.create_task(run_aggregation_runtime(), name="radio-atlas-aggregation")
+        if get_settings().radio_atlas_aggregation_enabled
+        else None
+    )
+
     try:
         yield
     finally:
+        if aggregation_task is not None:
+            aggregation_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await aggregation_task
         ingestion_task.cancel()
 
         with suppress(asyncio.CancelledError):
@@ -77,9 +89,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173",
-        ],
+        allow_origins=get_settings().radio_atlas_cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

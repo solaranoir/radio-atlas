@@ -26,6 +26,36 @@ async function mount() {
     await act(async () => { render(<TimelineScrubber />); });
 }
 describe("timeline scrubber", () => {
+    it("places markers and density proportionally within the visible time window", async () => {
+        const end = "2026-01-01T02:00:00Z";
+        vi.mocked(fetchTimeline).mockResolvedValue({
+            ...timelineFixture, end_time: end,
+            events: [0, 1, 2].map((hour) => ({ ...timelineFixture.events[0], id: `peak-${hour}`, start_time: `2026-01-01T0${hour}:00:00Z` })),
+        });
+        await mount();
+        const markers = document.querySelectorAll(".timeline__marker");
+        expect(Array.from(markers, (marker) => Number(marker.getAttribute("x1")))).toEqual([0, 500, 1000]);
+        const bar = document.querySelector(".timeline__density rect");
+        expect(bar?.getAttribute("x")).toBe("0");
+        expect(bar?.getAttribute("width")).toBe("500");
+        expect(bar?.getAttribute("height")).toBe("100");
+        fireEvent.click(screen.getAllByRole("button", { name: /Activity peak/ })[1]);
+        await act(async () => { await vi.advanceTimersByTimeAsync(150); });
+        expect(seekReplaySession).toHaveBeenLastCalledWith("session", "2026-01-01T01:00:00Z", expect.any(AbortSignal));
+        expect(document.querySelector(".timeline__cursor")?.getAttribute("x1")).toBe("500");
+    });
+    it("round-trips zoom ranges and keeps replay selection independent of zoom", async () => {
+        vi.mocked(fetchTimeline).mockImplementation(async (range) => ({ ...timelineFixture, ...(range ?? {}) }));
+        await mount();
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Show less time" })); });
+        const narrow = vi.mocked(fetchTimeline).mock.calls[1][0];
+        expect(narrow?.start_time).toBe("2026-01-01T00:30:00.000000Z");
+        expect(narrow?.end_time).toBe("2026-01-01T01:30:00.000000Z");
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Show more time" })); });
+        expect(vi.mocked(fetchTimeline).mock.calls[2][0]).toEqual({ start_time: "2026-01-01T00:00:00.000000Z", end_time: "2026-01-01T02:00:00.000000Z" });
+        expect(createReplaySession).not.toHaveBeenCalled();
+        expect(seekReplaySession).not.toHaveBeenCalled();
+    });
     it("offers visible beginning/end, play/pause and speed controls", async () => {
         await mount();
         fireEvent.click(screen.getByRole("button", { name: "Beginning" }));

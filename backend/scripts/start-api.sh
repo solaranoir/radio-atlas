@@ -1,10 +1,12 @@
 #!/usr/bin/env sh
 set -eu
 
-echo "Applying database migrations..."
-alembic upgrade head
+if [ "${RUN_MIGRATIONS_ON_START:-true}" = "true" ]; then
+    echo "Applying database migrations..."
+    alembic upgrade head
+fi
 
 echo "Starting Radio Atlas API..."
 exec uvicorn app.main:app \
     --host 0.0.0.0 \
-    --port 8000
+    --port "${PORT:-8000}"
