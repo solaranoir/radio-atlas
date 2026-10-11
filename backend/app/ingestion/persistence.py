@@ -138,3 +138,17 @@ def ensure_providers(
                 provider_type=provider_type,
             )
         )
+
+
+def persist_spot_batch(session: Session, observations: list[SpotObservation]) -> None:
+    """Insert a bounded batch with one provider lookup per provider and one transaction."""
+    if not observations:
+        return
+    provider_ids = {
+        name: get_provider_id(session, name) for name in {item.provider for item in observations}
+    }
+    rows = [
+        {**item.model_dump(exclude={"provider"}), "provider_id": provider_ids[item.provider]}
+        for item in observations
+    ]
+    session.execute(insert(Spot), rows)
