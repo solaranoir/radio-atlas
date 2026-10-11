@@ -149,33 +149,6 @@ class PSKReporterProvider(StreamingObservationProvider):
                     },
                 )
 
-                await client.subscribe(self._topic)
-
-                logger.info(
-                    "PSK Reporter MQTT subscribed",
-                    extra={
-                        "provider": self.name,
-                        "operation": "subscribe",
-                        "topic": self._topic,
-                    },
-                )
-
-                async for message in client.messages:
-                    try:
-                        spot = self._parse_message(bytes(message.payload))
-                        yield self._to_observation(spot)
-
-                    except PSKReporterError as exc:
-                        logger.warning(
-                            "PSK Reporter message rejected",
-                            extra={
-                                "provider": self.name,
-                                "operation": "message_validation",
-                                "topic": str(message.topic),
-                                "error": str(exc),
-                            },
-                        )
-
     async def stream(
         self,
     ) -> AsyncGenerator[ProviderObservation]:

@@ -30,9 +30,10 @@ from app.logging.logger import configure_logging
 async def lifespan(
     _app: FastAPI,
 ) -> AsyncIterator[None]:
-    ingestion_task = asyncio.create_task(
-        run_ingestion_runtime(),
-        name="radio-atlas-ingestion",
+    ingestion_task = (
+        asyncio.create_task(run_ingestion_runtime(), name="radio-atlas-ingestion")
+        if get_settings().radio_atlas_ingestion_enabled
+        else None
     )
 
     aggregation_task = (
@@ -48,10 +49,10 @@ async def lifespan(
             aggregation_task.cancel()
             with suppress(asyncio.CancelledError):
                 await aggregation_task
-        ingestion_task.cancel()
-
-        with suppress(asyncio.CancelledError):
-            await ingestion_task
+        if ingestion_task is not None:
+            ingestion_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await ingestion_task
 
 
 def create_app() -> FastAPI:
