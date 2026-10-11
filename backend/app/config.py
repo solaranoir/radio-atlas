@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     )
 
     radio_atlas_cors_origins: list[str] = ["http://localhost:5173"]
+    radio_atlas_ingestion_enabled: bool = True
     radio_atlas_aggregation_enabled: bool = False
 
     @field_validator("radio_atlas_database_url", mode="before")

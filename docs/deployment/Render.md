@@ -16,7 +16,7 @@ A new database contains no local history. Let ingestion accumulate observations 
 
 ## Runtime constraints
 
-Keep one API instance and the default single Uvicorn process: ingestion and aggregation run inside it. Before scaling, move these jobs into a dedicated worker or add distributed scheduling coordination. Rolling deploys can briefly overlap instances; monitor ingestion and idempotent rollups. Review storage growth and retention as data accumulates.
+The updated Blueprint runs ingestion and aggregation in a dedicated single worker and disables them inside the API. Keep one worker instance until distributed scheduling coordination exists. See Ingestion_4_6.md for cutover instructions. Rolling deploys can briefly overlap instances; monitor ingestion and idempotent rollups. Review storage growth and retention as data accumulates.
 
 Historical globe frame integration remains separate Story 6.1 work. Deploying the timeline does not provide it.
 
