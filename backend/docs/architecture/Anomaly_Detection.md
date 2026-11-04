@@ -1,6 +1,6 @@
 # Anomaly Detection 
 
-**Architecture Decision & Research Report  
+**Architecture Decision & Research Report**
 
 | **Decision in one sentence:** Adopt an explainable hybrid detector: robust seasonal baselines for radio metrics + explicit solar-domain thresholds + deterministic scoring/classification; retain Isolation Forest as a later challenger, not the Phase 3 primary detector. |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -372,6 +372,106 @@ fabricating results.
 - A reviewer can explain every surfaced event from persisted evidence
   without rerunning an opaque model.
 
+## 8.2 Evaluation harness
+
+The protocol above is implemented as an offline, read-only harness in
+`app/analytics/anomalies/evaluation/`:
+
+```sh
+# Synthetic validation (ground truth known)
+python -m app.analytics.anomalies.evaluation --source synthetic
+
+# Historical rollups (read-only transaction; prefer a replica or restored snapshot)
+python -m app.analytics.anomalies.evaluation --source database \
+    --metric observation_count --out anomaly_eval.md
+
+# Exported rollups plus independently curated events
+python -m app.analytics.anomalies.evaluation --source csv \
+    --points-csv band_hourly.csv --events-csv events.csv
+```
+
+Protocol properties:
+
+- Input is `analytics_band_hourly`, one series per band/mode. Counts are
+  `log1p`-transformed for every detector. Hours missing from a series are
+  zero-filled only when another series has data in that hour; hours with
+  no data anywhere count as ingestion gaps, not silence.
+- Every detector is strictly causal. A bucket's score uses only earlier
+  buckets, and unit tests enforce this.
+- Every detector is calibrated to the same alert budget, 0.5% of training
+  buckets by default, before the holdout is measured. Detectors are
+  compared on what they flag at equal alert volume, not on their raw
+  score scales.
+- Reference events are Kp ≥ 5 windows from `solar_conditions`, merged
+  into contiguous 3-hour intervals, plus an optional curated CSV. Detector
+  output is never used to build reference events.
+- Determinism is checked by scoring twice and comparing digests.
+
+Candidates: `threshold-static` (deviation from the series' long-run
+median), `rolling-mean-24h`, `zscore-28d` (mean/std over all hours), and
+`seasonal-mad` (same-UTC-hour cohort over 28 days, modified Z with
+minimum 8 samples) at MAD floors of 0.1 and 0.5 in log space.
+
+## 8.3 Synthetic validation results
+
+These numbers come from synthetic data: 10 seeds × 84 days, 8 band/mode
+series (2 sparse), 30 injected events per seed (openings ×2.5–5 on one
+band; suppressions ×0.15–0.4 on all bands), 2–8 hour ingestion gaps, and
+a 70/30 train/holdout split, with 107 holdout events in total. They
+validate the harness and show how each method fails. They are not
+evidence about real PSK Reporter behavior.
+
+| Detector | Holdout flag rate | Non-event flags/day | Diurnal skew (non-event) | Sparse flag share | Event recall | Event score pct | Flags in events |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `threshold-static` | 0.48% | 0.66 | 0.83 | 0% | 22% | 0.82 | 26% |
+| `rolling-mean-24h` | 0.41% | 0.49 | 0.66 | 30% | 25% | 0.70 | 36% |
+| `zscore-28d` | 0.48% | 0.32 | 0.78 | 10% | 33% | 0.76 | 63% |
+| `seasonal-mad-floor0.1` | 0.55% | 0.09 | 0.90 | 8% | 45% | 0.98 | 92% |
+| `seasonal-mad-floor0.5` | 0.56% | 0.06 | 0.92 | 6% | 47% | 0.98 | 92% |
+
+All detectors were deterministic across reruns.
+
+Reading against the 8.1 acceptance evidence:
+
+- **Fewer diurnal false positives:** met on synthetic data. Seasonal MAD
+  raises 5–11× fewer flags outside reference events than the
+  alternatives, and 92% of its flags fall inside injected events.
+  Diurnal skew for seasonal MAD is computed from only about 15 non-event
+  flags across all seeds, so it is not informative. The skew for
+  `threshold-static` (0.83, ≈165 flags) is meaningful: the static
+  detector mostly flags each band's normal daily peak and trough.
+- **Known events rank above ordinary buckets:** met. In-event scores sit
+  at the 98th holdout percentile, versus 70th–82nd for the alternatives.
+- **Sparse dimensions do not dominate:** largely met. With the 0.5 floor,
+  6% of seasonal flags land on sparse series, versus 30% for the 24-hour
+  rolling mean. A sparse-series guard (minimum cohort median or minimum
+  activity) is still needed in Story 5.2. A one-spot burst on a quiet band
+  is the main remaining source of seasonal false positives.
+- **Reproducible:** met.
+- **Explainable from persisted evidence:** met by construction. The score
+  is (value − cohort median) / cohort MAD, so persisting the cohort
+  median, MAD, sample count and floor reproduces it.
+
+Calibration carried forward: seasonal MAD with a MAD floor of 0.5 in
+`log1p` count space as the Story 5.2 starting point. The floor
+barely changes ranking quality but reduces sparse-series and non-event
+flags. Event recall at a 0.5% budget is under 50% for every method
+because the budget is tight and suppression events are short. Story 5.3
+should set severity bands from the score distribution rather than raise
+the budget.
+
+## 8.4 Historical-data run
+
+Status: **pending data access.** Local development has no PSK history,
+and the only populated database is the Render production instance.
+Run the harness against a read replica, a restored snapshot, or a CSV
+export of `analytics_band_hourly` and the `kp_index` rows of
+`solar_conditions`. Record the results table here for both
+`observation_count` and `snr_avg_db`. Real-data results replace the
+synthetic table above as the selection evidence. If seasonal MAD does
+not lead on non-event flags and event score percentile with real data,
+revisit this decision (see section 13).
+
 # 9. Persistence Model Recommendation
 
 Story 5.3 requires anomaly persistence and Story 5.4 must link anomalies
@@ -494,7 +594,7 @@ organization rather than introducing a new architectural vocabulary.
 
 | **Field**             | **Decision**                                                                                                                                              |
 |-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Status                | Accepted for Phase 3 implementation; numeric calibration remains experimental.                                                                            |
+| Status                | Accepted for Phase 3 implementation. Synthetic validation complete (§8.3); historical run pending (§8.4).                                                |
 | Context               | Radio Atlas needs anomaly markers over seasonal, sparse, heterogeneous radio and solar time series, with replay-friendly explanations.                    |
 | Decision              | Hybrid seasonal robust statistical detector + domain thresholds + deterministic composite classification/severity.                                        |
 | Positive consequences | Explainable; low operational overhead; uses current rollups; easy to backfill/test; natural timeline integration.                                         |
@@ -575,5 +675,11 @@ historical evaluation should calibrate the constants.
 
 - [x] Historical-data evaluation protocol defined without inventing
   results.
+
+- [x] Evaluation harness implemented and tested; synthetic validation
+  results recorded (section 8.3).
+
+- [ ] Harness run against historical PSK rollups and results recorded
+  (section 8.4; blocked on data access).
 
 - [x] Clear implementation handoff produced for Stories 5.2 and 5.3.
