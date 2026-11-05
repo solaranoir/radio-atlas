@@ -37,8 +37,21 @@ class TimelineSource:
         self.session = session
 
     def history_bounds(self) -> tuple[datetime | None, datetime | None]:
+        # Raw spots are deleted after the retention window, but their rollups
+        # are kept, so history extends back to the earliest rollup bucket.
+        # LEAST/GREATEST ignore NULLs, so empty tables do not mask the others.
         row = self.session.execute(
-            select(func.min(Spot.observed_at), func.max(Spot.observed_at))
+            select(
+                func.least(
+                    select(func.min(Spot.observed_at)).scalar_subquery(),
+                    select(func.min(AnalyticsBandHourly.bucket_start)).scalar_subquery(),
+                    select(func.min(AnalyticsBandDaily.bucket_start)).scalar_subquery(),
+                ),
+                func.greatest(
+                    select(func.max(Spot.observed_at)).scalar_subquery(),
+                    select(func.max(AnalyticsBandHourly.bucket_start)).scalar_subquery(),
+                ),
+            )
         ).one()
         return row[0], row[1]
 

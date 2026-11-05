@@ -1,3 +1,4 @@
+from app.config import get_settings
 from app.infrastructure.database.session import create_session
 from app.ingestion.noaa import run_noaa_ingestion
 from app.ingestion.persistence import ensure_providers
@@ -9,7 +10,12 @@ from app.providers.psk_reporter import PSKReporterProvider
 
 async def run_ingestion_runtime() -> None:
     noaa_provider = NOAAProvider()
-    psk_reporter_provider = PSKReporterProvider()
+    settings = get_settings()
+    psk_reporter_provider = PSKReporterProvider(
+        host=settings.psk_reporter_mqtt_host,
+        port=settings.psk_reporter_mqtt_port,
+        topics=settings.psk_reporter_mqtt_topics,
+    )
 
     with create_session() as session:
         ensure_providers(session)

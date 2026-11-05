@@ -1,6 +1,7 @@
 import asyncio
 import json
 from collections.abc import AsyncIterator
+from unittest.mock import patch
 
 import aiomqtt
 import pytest
@@ -229,3 +230,41 @@ async def test_stream_reconnects_after_mqtt_error(
     assert result.provider == "psk_reporter"
 
     await stream.aclose()
+
+
+def test_provider_requires_at_least_one_topic() -> None:
+    with pytest.raises(ValueError):
+        PSKReporterProvider(topics=())
+
+
+@pytest.mark.asyncio
+async def test_provider_subscribes_to_each_topic_once() -> None:
+    subscribed: list[str] = []
+
+    class EmptyMessages:
+        def __aiter__(self) -> "EmptyMessages":
+            return self
+
+        async def __anext__(self) -> object:
+            raise StopAsyncIteration
+
+    class FakeClient:
+        messages = EmptyMessages()
+
+        async def __aenter__(self) -> "FakeClient":
+            return self
+
+        async def __aexit__(self, *args: object) -> None:
+            return None
+
+        async def subscribe(self, topic: str) -> None:
+            subscribed.append(topic)
+
+    provider = PSKReporterProvider(
+        topics=["pskr/filter/v2/+/FT8/#", "pskr/filter/v2/+/FT4/#", "pskr/filter/v2/+/FT8/#"]
+    )
+
+    with patch("app.providers.psk_reporter.aiomqtt.Client", return_value=FakeClient()):
+        assert [observation async for observation in provider._messages()] == []
+
+    assert subscribed == ["pskr/filter/v2/+/FT8/#", "pskr/filter/v2/+/FT4/#"]

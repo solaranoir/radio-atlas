@@ -4,9 +4,15 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.ingestion.resilience import CircuitBreaker, DeadLetterQueue
+from app.ingestion.resilience import (
+    CircuitBreaker,
+    CircuitOpenError,
+    DeadLetterQueue,
+    run_resilient_psk_reporter_job,
+)
 from app.ingestion.scheduler import (
     NOAA_INTERVAL_SECONDS,
+    PSK_REPORTER_RESTART_DELAY_SECONDS,
     run_ingestion_schedules,
     run_noaa_schedule,
     run_periodically,
@@ -83,12 +89,87 @@ async def test_noaa_schedule_uses_300_second_interval() -> None:
 
 
 @pytest.mark.asyncio
-async def test_psk_reporter_schedule_invokes_stream_once() -> None:
+async def test_psk_reporter_schedule_restarts_stream_after_it_stops() -> None:
     job = AsyncMock()
+    sleep = AsyncMock(side_effect=[None, None, asyncio.CancelledError()])
 
-    await run_psk_reporter_schedule(job)
+    with (
+        patch("app.ingestion.scheduler.asyncio.sleep", sleep),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        await run_psk_reporter_schedule(job, restart_delay_seconds=7)
+
+    assert job.await_count == 3
+    sleep.assert_awaited_with(7)
+
+
+@pytest.mark.asyncio
+async def test_psk_reporter_schedule_waits_out_open_circuit() -> None:
+    job = AsyncMock(side_effect=[CircuitOpenError("Circuit is open"), None])
+    sleep = AsyncMock(side_effect=[None, asyncio.CancelledError()])
+
+    with (
+        patch("app.ingestion.scheduler.asyncio.sleep", sleep),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        await run_psk_reporter_schedule(job)
+
+    assert job.await_count == 2
+    sleep.assert_awaited_with(PSK_REPORTER_RESTART_DELAY_SECONDS)
+
+
+@pytest.mark.asyncio
+async def test_psk_reporter_schedule_propagates_cancellation_from_job() -> None:
+    job = AsyncMock(side_effect=asyncio.CancelledError())
+    sleep = AsyncMock()
+
+    with (
+        patch("app.ingestion.scheduler.asyncio.sleep", sleep),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        await run_psk_reporter_schedule(job)
 
     job.assert_awaited_once_with()
+    sleep.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_psk_restart_survives_absorbed_failures_end_to_end() -> None:
+    """Regression: an absorbed stream failure must not end PSK ingestion."""
+
+    calls = 0
+
+    async def failing_stream() -> None:
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("database write failed")
+
+    breaker = CircuitBreaker(failure_threshold=100)
+    dead_letters = DeadLetterQueue()
+
+    async def resilient_job() -> None:
+        await run_resilient_psk_reporter_job(
+            failing_stream, circuit_breaker=breaker, dead_letter_queue=dead_letters
+        )
+
+    restart_sleeps = 0
+
+    async def fake_sleep(seconds: float) -> None:
+        nonlocal restart_sleeps
+        if seconds == PSK_REPORTER_RESTART_DELAY_SECONDS:
+            restart_sleeps += 1
+            if restart_sleeps == 2:
+                raise asyncio.CancelledError
+
+    with (
+        patch("app.ingestion.scheduler.asyncio.sleep", side_effect=fake_sleep),
+        patch("app.ingestion.resilience.asyncio.sleep", side_effect=fake_sleep),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        await run_psk_reporter_schedule(resilient_job)
+
+    # Two full resilient runs (3 attempts each) happened instead of one.
+    assert calls == 6
 
 
 @pytest.mark.asyncio

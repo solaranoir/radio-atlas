@@ -1,6 +1,6 @@
 import asyncio
 import json
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Sequence
 from time import perf_counter
 
 import aiomqtt
@@ -38,13 +38,17 @@ class PSKReporterProvider(StreamingObservationProvider):
         *,
         host: str = DEFAULT_MQTT_HOST,
         port: int = DEFAULT_MQTT_PORT,
-        topic: str = DEFAULT_MQTT_TOPIC,
+        topics: Sequence[str] = (DEFAULT_MQTT_TOPIC,),
         reconnect_delay_seconds: float = DEFAULT_RECONNECT_DELAY_SECONDS,
         max_queue_size: int = DEFAULT_MAX_QUEUE_SIZE,
     ) -> None:
         self._host = host
         self._port = port
-        self._topic = topic
+        if not topics:
+            raise ValueError("At least one PSK Reporter MQTT topic is required")
+        # Deduplicate while preserving order; overlapping wildcard topics are
+        # allowed but each topic is subscribed only once.
+        self._topics = tuple(dict.fromkeys(topics))
         self._reconnect_delay_seconds = reconnect_delay_seconds
         self._max_queue_size = max_queue_size
 
@@ -102,16 +106,17 @@ class PSKReporterProvider(StreamingObservationProvider):
                 },
             )
 
-            await client.subscribe(self._topic)
+            for topic in self._topics:
+                await client.subscribe(topic)
 
-            logger.info(
-                "PSK Reporter MQTT subscribed",
-                extra={
-                    "provider": self.name,
-                    "operation": "subscribe",
-                    "topic": self._topic,
-                },
-            )
+                logger.info(
+                    "PSK Reporter MQTT subscribed",
+                    extra={
+                        "provider": self.name,
+                        "operation": "subscribe",
+                        "topic": topic,
+                    },
+                )
 
             try:
                 async for message in client.messages:
