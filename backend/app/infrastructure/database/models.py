@@ -696,3 +696,24 @@ class ReplaySessionRecord(Base):
     )
 
     __table_args__ = (Index("ix_replay_sessions_updated_at", "updated_at"),)
+
+
+class SpotRetentionDay(Base):
+    """A UTC day whose rollups were rebuilt before its raw spots were deleted.
+
+    Written in the same transaction as the day's rollups so the retention job
+    never re-aggregates a day whose raw spots are already partly deleted
+    (which would overwrite rollups with lower counts).
+    """
+
+    __tablename__ = "spot_retention_days"
+
+    day_start: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        primary_key=True,
+    )
+    rolled_up_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )

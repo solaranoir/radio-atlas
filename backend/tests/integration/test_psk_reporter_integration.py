@@ -77,7 +77,7 @@ def test_provider_configuration() -> None:
 
     assert provider._host
     assert provider._port > 0
-    assert provider._topic
+    assert provider._topics
 
 
 @pytest.mark.integration

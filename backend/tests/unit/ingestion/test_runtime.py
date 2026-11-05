@@ -49,6 +49,32 @@ async def test_runtime_starts_both_ingestion_schedules() -> None:
 
 
 @pytest.mark.asyncio
+async def test_runtime_passes_configured_mqtt_settings_to_provider() -> None:
+    settings = MagicMock(
+        psk_reporter_mqtt_host="mqtt.example",
+        psk_reporter_mqtt_port=8883,
+        psk_reporter_mqtt_topics=["pskr/filter/v2/+/FT8/#", "pskr/filter/v2/+/FT4/#"],
+    )
+
+    with (
+        patch("app.ingestion.runtime.run_ingestion_schedules", new_callable=AsyncMock),
+        patch("app.ingestion.runtime.ensure_providers"),
+        patch("app.ingestion.runtime.NOAAProvider") as noaa_provider_cls,
+        patch("app.ingestion.runtime.PSKReporterProvider") as psk_provider_cls,
+        patch("app.ingestion.runtime.get_settings", return_value=settings),
+    ):
+        noaa_provider_cls.return_value.aclose = AsyncMock()
+
+        await run_ingestion_runtime()
+
+    psk_provider_cls.assert_called_once_with(
+        host="mqtt.example",
+        port=8883,
+        topics=["pskr/filter/v2/+/FT8/#", "pskr/filter/v2/+/FT4/#"],
+    )
+
+
+@pytest.mark.asyncio
 async def test_runtime_noaa_job_uses_fresh_session() -> None:
     startup_session = MagicMock()
     job_session = MagicMock()
