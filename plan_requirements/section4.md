@@ -270,7 +270,7 @@ The product backlog should eventually include:
 * EME operations
 * Contesting
 * SDR integration
-* Voice mode analysis
+* Voice mode analysis (see Backlog Story B.1: SSB Spot Ingestion)
 * Machine learning experimentation
 * Club collaboration
 * Social sharing
@@ -279,3 +279,44 @@ The product backlog should eventually include:
 * Wearable device integration
 
 These stories should remain in the backlog until after Version 1.0 is complete.
+
+---
+
+## Backlog Story B.1: SSB Spot Ingestion
+
+**As an operator, I want SSB (voice) activity included in Radio Atlas so that I can see phone-mode propagation, not only digital and CW modes.**
+
+### Context
+
+All spot data currently comes from PSK Reporter, which only receives reports that software decodes automatically: FT8, FT4, WSPR, JS8, CW (from automated skimmers) and similar modes. Voice cannot be decoded automatically, so PSK Reporter has essentially no SSB reports. A 2-minute sample of the full feed on 2026-11-05 (about 219 spots/s) contained none.
+
+SSB activity is mainly available from the DX cluster network (telnet/web clusters), where operators post spots by hand. Those spots differ from PSK Reporter reports:
+
+* They are posted by hand and sparse: one spot per notable station, not one per decode.
+* They carry no signal-to-noise measurement. Free-text comments may include a signal report.
+* They over-represent rare stations, DXpeditions and contest activity, so they show where people are interested, not the full propagation picture.
+* The spotter's location is often coarse or missing.
+
+### Acceptance Criteria
+
+* A DX cluster provider is implemented behind the existing provider abstraction (ADR-003). It connects, authenticates if required, reconnects, and is monitored like the PSK Reporter provider.
+* Cluster spot lines are parsed into normalized spot observations: spotter, spotted station, frequency, derived band, mode, time and comment.
+* Mode is assigned from frequency and band-plan segments when the cluster does not state it, and the result records whether the mode was declared or inferred.
+* Spot locations are resolved from callsign prefix (DXCC entity) when no grid is available, and the precision of each location is recorded.
+* Cluster spots are stored with their provider and source, so analytics, rollups and anomaly baselines can include or exclude them. They are not merged silently into PSK Reporter series.
+* Duplicate spots for the same station and frequency within a short window are deduplicated.
+* SSB activity can be toggled as its own layer or filter in the globe and timeline.
+* The documentation states the sampling bias and the missing signal measurements, and anomaly detection does not treat cluster spot volume as comparable to PSK Reporter decode volume.
+
+### Open Questions
+
+* Which cluster sources to use (for example DX Spider or AR-Cluster nodes, or an aggregated web feed), and their terms of use and rate limits.
+* Whether cluster CW, RTTY and digital spots are ingested too, or only SSB, to avoid overlapping with PSK Reporter.
+* Retention and storage: expected volume is far below PSK Reporter's, but it should be measured before deciding.
+* Whether a new ADR is needed for spots posted by hand versus decoded automatically.
+
+### Dependencies
+
+* ADR-003: Provider Abstraction
+* Story 4.6 ingestion worker, and multi-topic and retention support (PR #86)
+* Epic 5 anomaly detection: cluster spots must be kept out of PSK Reporter baselines or modeled separately
