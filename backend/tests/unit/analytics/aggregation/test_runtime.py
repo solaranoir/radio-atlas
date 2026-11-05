@@ -56,3 +56,43 @@ async def test_aggregation_runtime_starts_schedules() -> None:
         run_hourly_job,
         run_daily_job,
     )
+
+
+@pytest.mark.asyncio
+async def test_hourly_job_failure_is_logged_rolled_back_and_not_raised() -> None:
+    session = MagicMock(spec=Session)
+
+    with (
+        patch("app.analytics.aggregation.runtime.create_session") as create_session,
+        patch(
+            "app.analytics.aggregation.runtime.run_hourly_incremental_refresh",
+            side_effect=RuntimeError("number of parameters must be between 0 and 65535"),
+        ),
+        patch("app.analytics.aggregation.runtime.logger") as logger,
+    ):
+        create_session.return_value.__enter__.return_value = session
+
+        await run_hourly_job()
+
+    session.rollback.assert_called_once_with()
+    session.commit.assert_not_called()
+    logger.error.assert_called_once()
+    assert logger.error.call_args.kwargs["extra"]["job"] == "hourly"
+
+
+@pytest.mark.asyncio
+async def test_daily_job_failure_is_not_raised() -> None:
+    session = MagicMock(spec=Session)
+
+    with (
+        patch("app.analytics.aggregation.runtime.create_session") as create_session,
+        patch(
+            "app.analytics.aggregation.runtime.run_daily_incremental_refresh",
+            side_effect=RuntimeError("boom"),
+        ),
+    ):
+        create_session.return_value.__enter__.return_value = session
+
+        await run_daily_job()
+
+    session.rollback.assert_called_once_with()

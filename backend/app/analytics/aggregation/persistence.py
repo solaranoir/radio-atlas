@@ -1,4 +1,4 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from typing import Any
 
 from sqlalchemy.dialects.postgresql import insert
@@ -17,6 +17,20 @@ StationRollupModel = type[AnalyticsStationHourly] | type[AnalyticsStationDaily]
 AggregationRow = Mapping[str, Any]
 AggregationRows = Sequence[AggregationRow]
 
+# PostgreSQL's wire protocol allows at most 65,535 bind parameters per
+# statement. A multi-row INSERT uses one parameter per column per row, so busy
+# hours (thousands of active stations) must be written in several statements.
+MAX_BIND_PARAMETERS = 65_535
+
+
+def _chunked(
+    values: list[dict[str, Any]],
+) -> Iterator[list[dict[str, Any]]]:
+    columns = max(len(values[0]), 1)
+    rows_per_statement = max(MAX_BIND_PARAMETERS // columns, 1)
+    for start in range(0, len(values), rows_per_statement):
+        yield values[start : start + rows_per_statement]
+
 
 def upsert_band_rollups(
     session: Session,
@@ -27,8 +41,16 @@ def upsert_band_rollups(
     if not rows:
         return
 
-    values = [dict(row) for row in rows]
+    for chunk in _chunked([dict(row) for row in rows]):
+        _upsert_band_chunk(session, model=model, values=chunk)
 
+
+def _upsert_band_chunk(
+    session: Session,
+    *,
+    model: BandRollupModel,
+    values: list[dict[str, Any]],
+) -> None:
     statement = insert(model).values(values)
 
     statement = statement.on_conflict_do_update(
@@ -69,6 +91,16 @@ def upsert_station_rollups(
         for row in rows
     ]
 
+    for chunk in _chunked(values):
+        _upsert_station_chunk(session, model=model, values=chunk)
+
+
+def _upsert_station_chunk(
+    session: Session,
+    *,
+    model: StationRollupModel,
+    values: list[dict[str, Any]],
+) -> None:
     statement = insert(model).values(values)
 
     statement = statement.on_conflict_do_update(
