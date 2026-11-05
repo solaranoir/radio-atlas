@@ -1,0 +1,144 @@
+PHASE 3 STORY 5.1 - ANOMALY DETECTION: STATUS NOTE
+Date: 2026-11-04
+Branch: ph3story/5.1
+Related: backend/docs/architecture/Anomaly_Detection.md (sections 8.2-8.4),
+         docs/adr/adr-007.md, PR #86 (fix/psk-ingestion-restart)
+
+------------------------------------------------------------------------
+1. SUMMARY
+------------------------------------------------------------------------
+
+Story 5.1 is complete except for one Definition of Done item: running the
+evaluation harness against real historical PSK data. That item is BLOCKED.
+Production does not yet hold enough continuous data, because of the
+ingestion outages described in section 3. PR #86 fixes the causes. The
+historical run can happen once about 4 weeks of steady ingestion have
+accumulated after PR #86 is deployed.
+
+------------------------------------------------------------------------
+2. WHAT IS DONE ON THIS BRANCH
+------------------------------------------------------------------------
+
+- Research and design report: Anomaly_Detection.md (selected approach:
+  seasonal robust baseline using median + MAD per UTC hour, plus domain
+  thresholds and deterministic scoring).
+- Evaluation harness: backend/app/analytics/anomalies/evaluation/
+    * Compares threshold-static, rolling-mean-24h, zscore-28d and
+      seasonal-mad (MAD floor 0.1 and 0.5) detectors.
+    * Detectors use only earlier data, and all are calibrated to the
+      same alert budget on a training period, then measured on a later
+      holdout period.
+    * Reference events: Kp >= 5 windows from solar_conditions, plus an
+      optional curated CSV.
+    * Sources: database (read-only), CSV export, or synthetic data with
+      injected ground truth.
+    * Run: python -m app.analytics.anomalies.evaluation --source database
+- Tests: 40 new tests, 99% coverage of the harness package.
+- Synthetic validation (10 seeds x 84 days, 107 holdout events), recorded
+  in Anomaly_Detection.md section 8.3:
+    seasonal-mad-floor0.5: 0.06 non-event flags/day, event score
+      percentile 0.98, recall 47%
+    alternatives: 0.32-0.66 non-event flags/day, percentile 0.70-0.82,
+      recall 22-33%
+  These results validate the harness and support the selected method.
+  They are NOT evidence about real PSK Reporter behavior.
+- ADR-007 updated with the selected baseline method.
+
+------------------------------------------------------------------------
+3. WHY THE HISTORICAL RUN IS BLOCKED
+------------------------------------------------------------------------
+
+Production check on 2026-11-04 (read-only):
+- spots: about 10.6M rows from 2026-10-09 to 2026-11-02 01:26 UTC, but in
+  bursts (for example 4.39M on Oct 30; 151 on Nov 1). Nothing after Nov 2.
+- analytics_band_hourly: only 46 rows; a single series (20m/FT8).
+- solar_conditions (Kp): healthy, 6,348 readings, max Kp 7.
+
+Root causes (from worker logs and code; fixed in PR #86):
+1. Aggregation crash loop. In busy hours, the station rollup upsert went
+   over PostgreSQL's 65,535 bind-parameter limit. The unhandled error
+   stopped the whole worker, and Render restarted it about every 11
+   minutes (2026-11-01 18:38 to 2026-11-02 00:04 UTC). Each restart cut
+   PSK ingestion off.
+2. PSK ingestion never restarted. The PSK job ran once; after an absorbed
+   failure it ended quietly while NOAA kept the worker looking healthy.
+3. Ingestion subscribed only to 20m FT8. The configured topic setting
+   was also ignored.
+
+Even reading straight from raw spots, the best dataset available today
+is about 3 weeks of one band with large gaps. That is not enough to
+select a detector: the seasonal baseline needs at least 8 days of
+history for each hour, and the remaining holdout would be about 7 days
+with no other bands to compare.
+
+------------------------------------------------------------------------
+4. CHANGES IN PR #86 THAT AFFECT THIS STORY
+------------------------------------------------------------------------
+
+- Aggregation upserts are batched under the parameter limit. A failed
+  aggregation run is logged and retried instead of crashing the worker,
+  and aggregation runs off the event loop.
+- The PSK stream restarts automatically after any stop.
+- Raw spot retention: the worker deletes raw spots older than
+  RADIO_ATLAS_SPOT_RETENTION_DAYS (default 14). It rebuilds each day's
+  hourly and daily rollups before deleting it, and keeps rollups
+  forever. This also rebuilds the rollup hours lost in the crash loop.
+- Multiple MQTT topics: PSK_REPORTER_MQTT_TOPICS (JSON list). The
+  default is still 20m FT8.
+
+Effect on Story 5.1 and on the anomaly work in Stories 5.2 and 5.3:
+- GOOD: the harness reads analytics_band_hourly, which retention keeps
+  forever, so the historical evaluation is unaffected by deleting raw
+  spots. Rollups will also be more complete, because retention rebuilds
+  each day before deleting it.
+- GOOD: continuous ingestion makes the seasonal baselines meaningful.
+- WATCH: rollups for the 14 most recent days are kept current by the
+  hourly aggregation, not by retention. If an aggregation run fails, a
+  missing hour is repaired only when that day ages out of the retention
+  window.
+- WATCH: replaying raw spots, and any future feature that re-derives
+  anomaly evidence from raw spots, can only look back 14 days. Anomaly
+  evidence should be stored from rollup values, as the design report
+  already recommends (section 6.4).
+- DECISION PENDING: widening the topics beyond 20m FT8. Without it, the
+  evaluation covers one band only, so sparse-band behavior and
+  cross-band comparison cannot be tested. A 2-minute night-time sample
+  (03:17 UTC) measured about 219 spots/s across all bands vs 14/s for
+  20m FT8; FT8 is 94% of all traffic. Database and worker capacity must
+  be checked first.
+
+------------------------------------------------------------------------
+5. DATA ACCESS FOR THE HISTORICAL RUN (ALREADY SET UP)
+------------------------------------------------------------------------
+
+- Postgres role atlas_eval: read-only by default
+  (default_transaction_read_only = on). SELECT on analytics_band_hourly
+  and solar_conditions only.
+- Connection details are in backend/.env.eval. That file is gitignored
+  and must never be committed.
+- Command:
+    docker run --rm --env-file backend/.env.eval -v "$PWD/backend":/code \
+      -w /code <backend image> python -m app.analytics.anomalies.evaluation \
+      --source database --metric observation_count --out anomaly_eval.md
+  Repeat with --metric snr_avg_db.
+- When the evaluation is finished: DROP OWNED BY atlas_eval;
+  DROP ROLE atlas_eval;
+
+------------------------------------------------------------------------
+6. REMAINING STEPS TO CLOSE STORY 5.1
+------------------------------------------------------------------------
+
+1. Merge and deploy PR #86. Confirm in the worker logs that "PSK Reporter
+   batch persisted" keeps appearing after the first hourly aggregation,
+   and that retention finishes its first backlog run.
+2. Decide whether to widen the MQTT topics (optional, but recommended
+   for evaluation quality).
+3. Wait for about 4 weeks of continuous ingestion: about 8 days for the
+   baselines to form, plus enough days after that for a holdout.
+4. Run the harness for both metrics and record the results in
+   Anomaly_Detection.md section 8.4. If seasonal-mad does not lead on
+   non-event flags and event score percentile with real data, revisit
+   the decision (Anomaly_Detection.md section 13, ADR-007).
+5. Tick the last Definition of Done item and open the Story 5.1 PR.
+   (Option: open the PR now with section 8.4 marked pending, and record
+   the real results in a later PR.)
