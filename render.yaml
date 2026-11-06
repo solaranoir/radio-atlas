@@ -72,6 +72,15 @@ services:
           type: keyvalue
           name: radio-atlas-cache
           property: connectionString
+      # JSON list of PSK Reporter MQTT topics; "+" matches any band.
+      # FT8 + FT4 on all bands is ~94% of PSK Reporter traffic; CW (from
+      # automated skimmers) adds ~1-2%. SSB is not on PSK Reporter. Revert to
+      # '["pskr/filter/v2/20m/FT8/#"]' if the database cannot keep up.
+      - key: PSK_REPORTER_MQTT_TOPICS
+        value: '["pskr/filter/v2/+/FT8/#","pskr/filter/v2/+/FT4/#","pskr/filter/v2/+/CW/#"]'
+      # Raw spots older than this are rolled up, then deleted (0 disables).
+      - key: RADIO_ATLAS_SPOT_RETENTION_DAYS
+        value: "14"
 
   - type: keyvalue
     name: radio-atlas-cache
