@@ -24,25 +24,27 @@ The worker deletes raw spots older than `RADIO_ATLAS_SPOT_RETENTION_DAYS` (appli
 
 Rebuilding a day before deleting it also repairs hours a failed aggregation run missed. The first run after enabling retention can take a long time on a large backlog: it runs in a background thread and resumes where it stopped after a restart. Deleted rows free space for reuse inside Postgres, so the disk stops growing but does not shrink.
 
-Size the retention window and disk together. The job keeps N full UTC days plus the current day, so peak raw storage is about (N + 1) x daily volume. At the 219 spots/s sampled below, and the earlier estimate of 270 bytes per spot, daily volume is about 5.1 GB. That estimate predates the removal of five unused `spots` indexes, so measure the real figure with `pg_total_relation_size('spots')`. 20m FT8 alone peaked at about 540,000 spots per hour.
+Size the retention window and disk together. The job keeps N full UTC days plus the current day, so peak raw storage is about (N + 1) x daily volume. A synthetic test of 1 million spots measured about 300 bytes per spot, so each 100 spots/s of sustained traffic adds about 2.6 GB/day. Measure the real figure with `pg_total_relation_size('spots')`. 20m FT8 alone peaked at about 540,000 spots per hour.
 
 If the disk fills, Render suspends the database. Suspend the worker, resume the database, and raise its storage straight away. Storage cannot be reduced later. Keep `diskSizeGB` in render.yaml in step with the dashboard value.
 
-`PSK_REPORTER_MQTT_TOPICS` takes a JSON array of topics, for example `["pskr/filter/v2/+/FT8/#","pskr/filter/v2/+/FT4/#"]` for FT8 and FT4 on all bands. The default remains `["pskr/filter/v2/20m/FT8/#"]`. A 2-minute sample at 03:17 UTC on 2026-11-05 measured about 219 spots/s across all bands and modes, 205/s of them FT8. Check database CPU, insert latency and MQTT queue warnings before widening the topics on the current plans.
+`PSK_REPORTER_MQTT_TOPICS` takes a JSON array of topics, for example `["pskr/filter/v2/+/FT8/#","pskr/filter/v2/+/FT4/#"]` for FT8 and FT4 on all bands. The application default remains `["pskr/filter/v2/20m/FT8/#"]`; render.yaml subscribes to FT8, FT4 and CW on 20m, 10m, 12m, 15m and 17m. A 2-minute sample at 03:17 UTC on 2026-11-05 measured about 219 spots/s across all bands and modes, 205/s of them FT8. A 3-minute sample at about 19:36 UTC on 2026-11-08 measured about 470 spots/s for FT8, FT4 and CW on all bands: 20m 119, 40m 111, 80m 62, 10m 39, 15m 35, 17m 27, 30m 25, 12m 22, 60m 15 and 160m 15. Rates vary with time of day, day of week and conditions. Check database CPU, insert latency and MQTT queue warnings before widening the topics on the current plans.
 
 ## Known storage and history limitations
 
-The production settings of 3 retention days and a 30 GB disk follow a database suspension in November 2026. All-band ingestion was writing an estimated 5.1 GB/day to a 15 GB disk, so the disk could fill before the 14-day window deleted anything.
+The production settings of five bands, 3 retention days and a 30 GB disk follow a database suspension in November 2026. All-band ingestion filled the 15 GB disk before the 14-day window deleted anything. Raw spots were then cleared once, so raw replay starts when ingestion resumed.
+
+- **Only five bands are collected.** 40m, 80m, 30m, 60m, 160m and other bands are no longer ingested. Rollups, the timeline, statistics and anomaly baselines cover only the subscribed bands from that point, so all-band totals are not comparable across the change. The daily rollup for the UTC day ingestion resumed may undercount, because it is rebuilt from spots received after the clear.
 
 - **Raw history is short.** Replay and minute-resolution timeline data cover only the retained raw spots: 3 full UTC days plus the current day. Hourly and daily rollups are kept, but they have no geographic or per-spot detail and cannot rebuild replay.
 - **Expired replay ranges are not rejected.** Creating a replay session does not check the range against retained data, so a session for an expired range returns no observations and no error. The timeline's history bounds extend back to the earliest rollup, so they can include times that replay cannot show.
 - **Zero does not always mean no activity.** Minute-resolution timeline buckets older than the raw window count as zero. Downtime gaps also look like quiet periods.
 - **Outages leave permanent gaps.** The worker reads a live MQTT feed and does not backfill, so spots published while it is stopped are not recovered.
 - **Nothing stops the disk filling.** No code limits database size or pauses ingestion as the disk fills. Raising the ingestion rate or retention days without raising storage can cause another suspension. Storage autoscaling is available as a backstop, but each increase is permanent.
-- **Capacity figures are estimates.** The ingestion rate comes from one 2-minute sample, and 270 bytes per spot was not measured after the unused indexes were removed. Check real disk use for several days after changing either.
+- **Capacity figures are estimates.** The ingestion rates come from two short samples, and bytes per spot comes from synthetic data. The current topics run close to the disk budget of about 230 spots/s on average. Check real disk use for several days after changing topics or retention.
 - **Rollups grow indefinitely.** Hourly station rollups add one row per callsign, direction and hour and are never deleted. Their long-term size has not been measured, so include them in disk reviews.
 
-Longer raw history needs more storage. Time-partitioning `spots` could make deletion cheaper, but it is not implemented and would not reduce the storage a given window needs.
+Longer raw history or more bands need more storage. Time-partitioning `spots` could make deletion cheaper, but it is not implemented and would not reduce the storage a given window needs.
 
 Historical globe frame integration remains separate Story 6.1 work. Deploying the timeline does not provide it.
 

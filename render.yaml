@@ -72,12 +72,12 @@ services:
           type: keyvalue
           name: radio-atlas-cache
           property: connectionString
-      # JSON list of PSK Reporter MQTT topics; "+" matches any band.
-      # FT8 + FT4 on all bands is ~94% of PSK Reporter traffic; CW (from
-      # automated skimmers) adds ~1-2%. SSB is not on PSK Reporter. Revert to
-      # '["pskr/filter/v2/20m/FT8/#"]' if the database cannot keep up.
+      # JSON list of PSK Reporter MQTT topics. Limited to five bands so raw spots
+      # fit the 30 GB disk: about 240 spots/s in a 3-minute sample, against about
+      # 470 spots/s for FT8, FT4 and CW on all bands. Check disk use before adding
+      # bands. See docs/deployment/Render.md.
       - key: PSK_REPORTER_MQTT_TOPICS
-        value: '["pskr/filter/v2/+/FT8/#","pskr/filter/v2/+/FT4/#","pskr/filter/v2/+/CW/#"]'
+        value: '["pskr/filter/v2/20m/FT8/#","pskr/filter/v2/20m/FT4/#","pskr/filter/v2/20m/CW/#","pskr/filter/v2/10m/FT8/#","pskr/filter/v2/10m/FT4/#","pskr/filter/v2/10m/CW/#","pskr/filter/v2/12m/FT8/#","pskr/filter/v2/12m/FT4/#","pskr/filter/v2/12m/CW/#","pskr/filter/v2/15m/FT8/#","pskr/filter/v2/15m/FT4/#","pskr/filter/v2/15m/CW/#","pskr/filter/v2/17m/FT8/#","pskr/filter/v2/17m/FT4/#","pskr/filter/v2/17m/CW/#"]'
       # Raw spots older than this are rolled up, then deleted (0 disables).
       # Keeps N full UTC days plus today; size together with diskSizeGB. See
       # docs/deployment/Render.md.
