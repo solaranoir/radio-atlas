@@ -63,7 +63,7 @@ def test_job_logs_completion() -> None:
 
 
 @pytest.mark.asyncio
-async def test_runtime_waits_then_runs_daily_in_a_thread() -> None:
+async def test_runtime_waits_then_runs_repeatedly_in_a_thread() -> None:
     sleep = AsyncMock(side_effect=[None, None, asyncio.CancelledError()])
 
     with (

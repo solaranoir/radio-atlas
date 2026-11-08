@@ -79,8 +79,10 @@ services:
       - key: PSK_REPORTER_MQTT_TOPICS
         value: '["pskr/filter/v2/+/FT8/#","pskr/filter/v2/+/FT4/#","pskr/filter/v2/+/CW/#"]'
       # Raw spots older than this are rolled up, then deleted (0 disables).
+      # Keeps N full UTC days plus today; size together with diskSizeGB. See
+      # docs/deployment/Render.md.
       - key: RADIO_ATLAS_SPOT_RETENTION_DAYS
-        value: "14"
+        value: "3"
 
   - type: keyvalue
     name: radio-atlas-cache
@@ -95,5 +97,5 @@ databases:
     plan: 0.1c-256mb
     databaseName: radio_atlas
     user: radio_atlas
-    diskSizeGB: 15
+    diskSizeGB: 30
     ipAllowList: []

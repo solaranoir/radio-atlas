@@ -20,11 +20,13 @@ The updated Blueprint runs ingestion and aggregation in a dedicated single worke
 
 ## Spot retention and MQTT topics
 
-The worker deletes raw spots older than `RADIO_ATLAS_SPOT_RETENTION_DAYS` (default 14; 0 disables; minimum 3). Retention runs 5 minutes after the worker starts and then daily. Each expired UTC day is processed oldest-first. The day's hourly and daily rollups are rebuilt from its raw spots and the day is recorded in `spot_retention_days` in one transaction, then its spots are deleted in 10,000-row committed batches. Rollups are kept indefinitely, so analytics, the timeline and anomaly detection keep their full history. Raw-spot replay covers only the retention window.
+The worker deletes raw spots older than `RADIO_ATLAS_SPOT_RETENTION_DAYS` (default 14; 0 disables; minimum 3). Retention runs 5 minutes after the worker starts and then hourly. Each expired UTC day is processed oldest-first. The day's hourly and daily rollups are rebuilt from its raw spots and the day is recorded in `spot_retention_days` in one transaction, then its spots are deleted in 10,000-row committed batches. Rollups are kept indefinitely, so analytics, the timeline and anomaly detection keep their full history. Raw-spot replay covers only the retention window.
 
 Rebuilding a day before deleting it also repairs hours a failed aggregation run missed. The first run after enabling retention can take a long time on a large backlog: it runs in a background thread and resumes where it stopped after a restart. Deleted rows free space for reuse inside Postgres, so the disk stops growing but does not shrink.
 
-At roughly 270 bytes per stored spot, size the retention window and disk together. 20m FT8 alone peaked at about 540,000 spots per hour.
+Size the retention window and disk together. The job keeps N full UTC days plus the current day, so peak raw storage is about (N + 1) x daily volume. At the 219 spots/s sampled below, and the earlier estimate of 270 bytes per spot, daily volume is about 5.1 GB. That estimate predates the removal of five unused `spots` indexes, so measure the real figure with `pg_total_relation_size('spots')`. 20m FT8 alone peaked at about 540,000 spots per hour.
+
+If the disk fills, Render suspends the database. Suspend the worker, resume the database, and raise its storage straight away. Storage cannot be reduced later. Keep `diskSizeGB` in render.yaml in step with the dashboard value.
 
 `PSK_REPORTER_MQTT_TOPICS` takes a JSON array of topics, for example `["pskr/filter/v2/+/FT8/#","pskr/filter/v2/+/FT4/#"]` for FT8 and FT4 on all bands. The default remains `["pskr/filter/v2/20m/FT8/#"]`. A 2-minute sample at 03:17 UTC on 2026-11-05 measured about 219 spots/s across all bands and modes, 205/s of them FT8. Check database CPU, insert latency and MQTT queue warnings before widening the topics on the current plans.
 
