@@ -30,7 +30,7 @@ source units to meet the bucket cap. `bucket_seconds` reports the actual width.
 The final bucket can be shorter. Every display interval is returned, including
 zero counts. Normalization uses the largest visible count.
 
-Minute data counts all raw spots. Hour/day data counts band-resolved spots from
+Minute data counts all raw spots, so buckets older than the raw retention window (see `docs/deployment/Render.md`) return zero even if there was activity. Hour/day data counts band-resolved spots from
 rollups, with raw counts restricted to partial source boundaries. No per-bucket
 queries are issued. Missing rollups cannot establish completeness, so their
 `aggregation_status` remains `unknown`. Raw-only output uses `not_applicable`.

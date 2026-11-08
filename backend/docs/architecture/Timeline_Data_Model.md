@@ -37,9 +37,11 @@ and reserves raw queries for fine zoom and partial boundaries.
   conventions. Preserve microsecond precision and emit RFC 3339 UTC timestamps.
 - Observation and bucket intervals are `[start_time, end_time)`. A spot at the
   end belongs to the next interval. Historical ordering uses `observed_at`.
-- History bounds are global raw-spot bounds: `start_time = MIN(observed_at)` and
-  exclusive `end_time = MAX(observed_at) + 1 microsecond`. Both are null if there
-  are no spots. Guard timestamp overflow using the API's supported date range.
+- History bounds span raw spots and rollups, because raw spots are deleted after
+  the retention window while rollups are kept. `start_time` is the earliest raw
+  spot, hourly bucket or daily bucket. Exclusive `end_time` is the latest raw
+  spot or hourly bucket start, plus 1 microsecond. Both are null if there is no
+  data. Guard timestamp overflow using the API's supported date range.
 - Omitting both request bounds selects full history. Supplying only one is
   invalid. An explicit range can extend outside known history; return empty
   buckets for those portions while retaining the requested axis.
@@ -100,7 +102,9 @@ zoom; it is not a cross-request measure of propagation quality.
 
 For minute resolution, count raw spots, including unresolved bands, and report
 `density_coverage = all_observations`. For hour/day resolution, aggregate band
-rollups and report `density_coverage = band_resolved_observations`.
+rollups and report `density_coverage = band_resolved_observations`. Minute
+buckets older than the raw retention window count as zero because their spots
+have been deleted.
 
 Sum `observation_count` across band/mode rows only for source buckets wholly
 inside a display bucket. For partial source buckets at display boundaries,
