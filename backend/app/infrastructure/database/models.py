@@ -256,12 +256,7 @@ class Spot(Base):
             postgresql_nulls_not_distinct=True,
         ),
         Index("ix_spots_observed_at", "observed_at"),
-        Index("ix_spots_band", "band"),
         Index("ix_spots_band_observed_at", "band", "observed_at"),
-        Index("ix_spots_sender_station_id", "sender_station_id"),
-        Index("ix_spots_receiver_station_id", "receiver_station_id"),
-        Index("ix_spots_sender_callsign", "sender_callsign"),
-        Index("ix_spots_receiver_callsign", "receiver_callsign"),
     )
 
 

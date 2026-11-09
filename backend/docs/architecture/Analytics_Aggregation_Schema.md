@@ -27,8 +27,9 @@ Raw observations remain the source of truth.
   patterns can differ substantially by mode.
 - Geographic dimensions are not included in Phase 3 rollups. Replay and
   geographic visualization retain full location fidelity by retrieving raw
-  observations; geographic aggregation can be introduced later if a concrete
-  analytical query requires it.
+  observations, so that detail is only available inside the raw spot retention
+  window (see `docs/deployment/Render.md`); geographic aggregation can be
+  introduced later if a concrete analytical query requires it.
 
 ## Hourly Band Rollups
 

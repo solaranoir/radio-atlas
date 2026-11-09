@@ -273,7 +273,8 @@ Potential future extensions include:
 - additional external providers;
 - propagation-derived observations;
 - partitioning high-volume spot data by time;
-- archival policies;
+- archival policies beyond the current raw spot retention window (see
+  `docs/deployment/Render.md`);
 - HTTP/MQTT ingestion provenance details;
 - richer authentication and authorization models.
 

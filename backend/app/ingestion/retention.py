@@ -41,7 +41,8 @@ from app.logging.logger import get_logger
 logger = get_logger(__name__)
 
 DEFAULT_DELETE_BATCH_SIZE = 10_000
-RETENTION_INTERVAL_SECONDS = 24 * 60 * 60
+# Hourly so an expired day is removed soon after midnight UTC, not up to a day later.
+RETENTION_INTERVAL_SECONDS = 60 * 60
 # Let ingestion and the first aggregation pass settle after a (re)start.
 RETENTION_INITIAL_DELAY_SECONDS = 5 * 60
 
