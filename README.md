@@ -12,7 +12,7 @@
 
 🌎 **v0.2.0 — Phase 2: Radio Weather Globe**
 
-Phases 1 and 2 are complete.
+Phases 1 and 2 are complete. Historical replay and analytics are in development.
 
 Radio Atlas now combines a normalized radio and space-weather data foundation
 with an interactive Three.js globe for exploring amateur-radio activity
@@ -27,14 +27,14 @@ geographically.
 - PostgreSQL persistence
 - Interactive Three.js globe
 - Live observation-driven station markers
-- Live signal-path visualization
+- Live great-circle signal paths, with strength derived from SNR
 - Spot-density visualization
 - Solar terminator visualization
 - Solar-weather visualization
 - Observation filtering synchronized with globe rendering
-- Station and signal-path selection
+- Station and signal-path selection with information panels
 - Layer visibility controls with persisted preferences
-- Keyboard globe navigation
+- Mouse and keyboard globe navigation
 - Reduced-motion support
 - Rendering performance monitoring
 - Unit, end-to-end, and visual regression testing
@@ -44,8 +44,8 @@ geographically.
 **v0.2.0** establishes the Radio Weather Globe and completes the live
 observation-to-visualization pipeline.
 
-Historical replay, production propagation predictions, AI-driven explanations,
-and additional analytical capabilities remain planned for subsequent phases.
+Production propagation predictions and AI-driven explanations remain planned
+for later phases.
 
 ---
 
@@ -120,156 +120,24 @@ Visualization adapter
 Three.js globe
 ```
 
-The renderer remains separate from API retrieval and application state. React
-coordinates data and user interaction while the rendering layer manages the
-Three.js scene and visualization objects.
-
-### Current Globe Capabilities
-
-- Interactive Earth visualization
-- Mouse and keyboard camera navigation
-- Live observation-driven stations
-- Great-circle signal paths
-- Signal strength visualization derived from observation SNR
-- Geographic spot-density visualization
-- Solar terminator
-- Solar-weather overlays
-- Layer visibility controls
-- Persisted layer preferences
-- Observation filters
-- Station and signal-path selection
-- Information panels
-- Reduced-motion behavior
-- Rendering performance monitoring
-
 ---
 
 ## Product Roadmap
 
-Radio Atlas is being built incrementally, with each phase adding capabilities
-to the same underlying data and visualization platform.
+Each phase adds capabilities to the same data and visualization platform.
 
-### ✅ Phase 1 — Foundation & Data Platform
+| Phase | Status | Scope |
+| --- | --- | --- |
+| 1 — Foundation & Data Platform | ✅ Released as [v0.1.0](https://github.com/solaranoir/radio-atlas/releases/tag/v0.1.0) | Ingestion, normalization, persistence, APIs and development infrastructure ([tasks](Phase1_tasks.md)) |
+| 2 — Radio Weather Globe | ✅ Released as [v0.2.0](https://github.com/solaranoir/radio-atlas/releases/tag/v0.2.0) | Interactive globe, visualization layers, filtering, live rendering and browser testing ([tasks](Phase2_tasks.md)) |
+| Current | 🚧 In development | Historical replay, timeline controls, propagation analytics and anomaly detection |
 
-Established the backend and data architecture.
+### Planned
 
-Key work included:
-
-- Backend architecture
-- Docker development environment
-- Continuous integration
-- PostgreSQL and Redis infrastructure
-- NOAA provider integration
-- PSK Reporter integration
-- Observation normalization
-- Provider abstraction
-- Repository layer
-- FastAPI endpoints
-- Health and ingestion infrastructure
-- Automated backend testing
-
-Released as **v0.1.0**.
-
-### ✅ Phase 2 — Radio Weather Globe
-
-Established the interactive visualization platform.
-
-Key work included:
-
-- Three.js globe rendering
-- Earth and lighting visualization
-- Camera navigation
-- Signal-path rendering
-- Station markers
-- Spot-density visualization
-- Solar terminator
-- Solar-weather layers
-- Layer architecture and controls
-- Observation filtering
-- Selection and interaction behavior
-- Animation infrastructure
-- Reduced-motion support
-- Rendering performance monitoring
-- Live observation-to-renderer integration
-- Unit testing
-- End-to-end browser testing
-- Visual regression testing
-- Globe architecture documentation
-
-Released as **v0.2.0**.
-
-### 🔭 Future Phases
-
-Planned capabilities include:
-
-- Historical propagation replay
-- Timeline controls and time scrubbing
-- Propagation analytics
-- Production prediction paths
-- Band forecasting
-- Confidence scoring
-- Rare-contact and anomaly intelligence
-- Evidence-grounded AI explanations
-- QSO story generation
-- Expanded accessibility validation
-- Deployment and production hardening
-
----
-
-## Planned Product Capabilities
-
-The following capabilities describe the broader Radio Atlas vision. Some are
-implemented today, while others belong to later roadmap phases.
-
-### Radio Weather Globe
-
-**Implemented**
-
-- Live signal paths
-- Station visualization
-- Spot density
-- Solar terminator
-- Solar-weather overlays
-- Animated visualization
-- Layer management
-- Observation filtering
-- Interactive selection
-
-### QSO Story Engine
-
-**Planned**
-
-- Evidence-grounded narratives
-- Propagation explanations
-- Historical comparisons
-- Educational explanations
-
-### Band Forecasting
-
-**Planned**
-
-- Opening probabilities
-- Geographic forecasts
-- Confidence scoring
-- Predicted propagation paths
-
-### Historical Replay
-
-**Planned**
-
-- Timeline controls
-- Time scrubbing
-- Propagation reconstruction
-- Historical exploration
-
-### Rare Contact Discovery
-
-**Planned / Foundational infrastructure present**
-
-- Anomaly detection
-- Contact intelligence
-- Achievement generation
-- Statistical analysis
+- **Explain:** evidence-grounded AI explanations and QSO story generation
+- **Predict:** band forecasting, prediction paths and confidence scoring
+- **Explore:** rare-contact intelligence and achievements
+- **Platform:** expanded accessibility validation and production hardening
 
 ---
 
@@ -277,300 +145,109 @@ implemented today, while others belong to later roadmap phases.
 
 | Layer | Technology |
 | --- | --- |
-| Frontend | React 19 |
-| Frontend Language | TypeScript |
-| Globe Rendering | Three.js |
-| Frontend State | Zustand |
-| Frontend Build | Vite |
-| Backend | FastAPI |
-| Backend Language | Python 3.12+ |
-| Database | PostgreSQL |
-| Cache | Redis |
-| Data Sources | NOAA + PSK Reporter |
-| Backend Testing | Pytest |
-| Frontend Testing | Vitest + React Testing Library |
-| Browser Testing | Playwright |
-| Containerization | Docker |
-
-The Phase 2 globe visualization stack is standardized on **Three.js**.
-Visualization data is adapted outside the renderer and supplied explicitly to
-rendering layers.
+| Frontend | React 19, TypeScript, Vite, Zustand |
+| Globe rendering | Three.js |
+| Backend | FastAPI, Python 3.12+ |
+| Data | PostgreSQL, Redis |
+| Data sources | NOAA, PSK Reporter |
+| Testing | Pytest, Vitest, React Testing Library, Playwright |
+| Containers | Docker |
 
 ---
 
 ## Architecture
 
-Radio Atlas separates external data acquisition, domain modeling, application
-state, and visualization.
-
-At a high level:
-
 ```text
-External Data Sources
-        │
-        ├── NOAA
-        └── PSK Reporter
+NOAA, PSK Reporter
         │
         ▼
-Provider / Ingestion Layer
+Providers and ingestion ──► Normalized domain models ──► PostgreSQL
+                                                            │
+                                                            ▼
+                                                         FastAPI
+                                                            │
+                                                            ▼
+React application: filtering, state, analysis, visualization adapters
         │
         ▼
-Normalized Domain Models
-        │
-        ▼
-PostgreSQL
-        │
-        ▼
-FastAPI
-        │
-        ▼
-React Application
-        │
-        ├── Filtering
-        ├── State
-        ├── Analysis
-        └── Visualization Adapters
-                │
-                ▼
-           Three.js Renderer
-                │
-                ├── Stations
-                ├── Signal Paths
-                ├── Spot Density
-                ├── Solar Terminator
-                ├── Solar Weather
-                ├── Prediction Paths
-                └── Anomalies
+Three.js renderer: stations, signal paths, spot density, solar terminator,
+solar weather (planned: prediction paths, anomalies)
 ```
 
-The rendering context does not retrieve API data directly. Application data is
-transformed into renderer-facing visualization models before crossing the
-React-to-Three.js boundary.
+The renderer never retrieves API data. Application data is transformed into
+renderer-facing visualization models before crossing the React-to-Three.js
+boundary. See [Globe Architecture](docs/architecture/Globe_Architecture.md).
 
 ---
 
 ## Getting Started
 
-### Prerequisites
-
-- Python 3.12+
-- Node.js 24
-- npm
-- Docker Desktop or Docker Engine
-- Docker Compose
-- Git
-
-The repository includes an `.nvmrc` for the frontend Node.js version.
-
-### Clone the Repository
+Prerequisites: Git, Docker with Compose, and Node.js 24 with npm for frontend
+work (see `.nvmrc`).
 
 ```bash
 git clone git@github.com:solaranoir/radio-atlas.git
 cd radio-atlas
+cp .env.example .env          # review local settings
+docker compose up --build     # stop with: docker compose down
 ```
-
-### Configure the Environment
-
-```bash
-cp .env.example .env
-```
-
-Review `.env` and update local settings if necessary.
-
-### Start the Development Stack
-
-```bash
-docker compose up --build
-```
-
-### Local Services
 
 | Service | Address |
 | --- | --- |
 | FastAPI | `http://localhost:8000` |
-| OpenAPI Documentation | `http://localhost:8000/docs` |
+| OpenAPI documentation | `http://localhost:8000/docs` |
 | PostgreSQL | `localhost:5432` |
 | Redis | `localhost:6379` |
 
-### Stop the Development Stack
+Start the frontend with `cd frontend && npm install && npm run dev`.
 
-```bash
-docker compose down
-```
-
----
-
-## Frontend Development
-
-The Radio Weather Globe lives in the `frontend` application.
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### Frontend Validation
-
-Run the unit test suite:
-
-```bash
-npm test -- --run
-```
-
-Run linting:
-
-```bash
-npm run lint
-```
-
-Run the production build:
-
-```bash
-npm run build
-```
-
-Run end-to-end tests:
-
-```bash
-npm run test:e2e
-```
-
-Run visual regression tests:
-
-```bash
-npm run test:visual
-```
-
-Intentional visual changes can be reviewed and then incorporated into the
-baseline with:
-
-```bash
-npm run test:visual:update
-```
-
-Visual baselines should only be updated after confirming that the rendered
-change is expected.
+See [Local Development](docs/development/LOCAL_DEVELOPMENT.md) for resets,
+logs, database shells and troubleshooting.
 
 ---
 
 ## Testing
 
-Radio Atlas uses multiple testing layers rather than relying on a single test
-suite.
+| Suite | Command | Covers |
+| --- | --- | --- |
+| Backend | `docker compose exec api pytest` | Providers, normalization, domain models, repositories, analytics, replay |
+| Frontend unit | `npm test` | State, filtering, visualization utilities, rendering layers, the React-to-Three.js boundary |
+| Lint and build | `npm run lint`, `npm run build` | Frontend static checks and production build |
+| End-to-end | `npm run test:e2e` | Layers, filters, selection and camera behavior in the browser |
+| Visual regression | `npm run test:visual` | Deterministic baselines for the globe, signal paths, spot density and animation |
 
-### Backend
-
-Pytest covers provider behavior, normalization, domain models, repositories,
-and backend application logic.
-
-### Frontend
-
-Vitest and React Testing Library cover application state, filtering,
-visualization utilities, rendering-layer behavior, interactions, and the
-React-to-Three.js integration boundary.
-
-As of **v0.2.0**, the frontend suite contains:
-
-- **53 test files**
-- **248 passing tests**
-
-### End-to-End
-
-Playwright validates browser-level behavior including:
-
-- Layer visibility and persistence
-- Observation filtering
-- Filter-to-renderer synchronization
-- Observation-backed station selection
-- Camera interaction and reset behavior
-
-### Visual Regression
-
-Playwright also maintains deterministic visual baselines for:
-
-- Globe rendering
-- Signal paths
-- Spot-density visualization
-- Full-motion animation behavior
-
-Visual tests use deterministic API-backed observations rather than
-production rendering fixtures.
+Frontend commands run from `frontend/`. Update visual baselines with
+`npm run test:visual:update`, and only after confirming the rendered change is
+expected.
 
 ---
 
-## Repository Structure
+## Repository Layout
 
-```text
-radio-atlas/
-├── .github/
-│   └── workflows/
-│
-├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   ├── domain/
-│   │   ├── infrastructure/
-│   │   ├── ingestion/
-│   │   ├── models/
-│   │   ├── providers/
-│   │   └── repositories/
-│   ├── scripts/
-│   └── tests/
-│
-├── frontend/
-│   ├── src/
-│   │   ├── api/
-│   │   ├── components/
-│   │   └── globe/
-│   │       ├── components/
-│   │       ├── filters/
-│   │       ├── hooks/
-│   │       ├── interactions/
-│   │       ├── layers/
-│   │       ├── preferences/
-│   │       ├── rendering/
-│   │       ├── state/
-│   │       ├── types/
-│   │       └── utilities/
-│   └── tests/
-│       ├── e2e/
-│       └── visual/
-│
-├── docs/
-│   ├── adr/
-│   ├── architecture/
-│   ├── requirements/
-│   ├── testing/
-│   └── ux/
-│
-├── docker-compose.yml
-└── README.md
-```
+| Path | Contents |
+| --- | --- |
+| `backend/` | FastAPI app, ingestion worker, migrations, tests and backend docs |
+| `frontend/` | React app, Three.js globe, timeline, unit, end-to-end and visual tests |
+| `docs/` | ADRs, architecture, deployment, development, research and UX docs |
+| `plan_requirements/` | Product requirements and implementation plan |
+| `research_papers/` | Reference papers |
+| `.github/workflows/` | Continuous integration |
+| `docker-compose*.yml` | Local stack and test harnesses |
+| `render.yaml` | Render deployment Blueprint |
 
 ---
 
 ## Documentation
 
-The repository contains living technical and product documentation covering:
-
-| Documentation | Purpose |
-| --- | --- |
-| Product Requirements | Product definition and goals |
-| Engineering Roadmaps | Phase-by-phase implementation plans |
-| Architecture Decision Records | Architectural decisions and rationale |
-| System Architecture | Backend and application architecture |
-| Globe Architecture | Three.js rendering and application boundaries |
-| Component Diagrams | Major frontend component relationships |
-| Layer Architecture | Globe visualization layer design |
-| Sequence Diagrams | Runtime data and interaction flows |
-| Animation Specification | Motion semantics and behavior |
-| Testing Strategy | Verification approach |
-| Phase Review Notes | Implementation findings and known limitations |
+- **Product:** [requirements](plan_requirements/) and phase plans ([Phase 1](Phase1_tasks.md), [Phase 2](Phase2_tasks.md))
+- **Decisions:** [Architecture Decision Records](docs/adr/README.md)
+- **Architecture:** [globe](docs/architecture/Globe_Architecture.md), [layers](docs/architecture/Layer_Architecture.md), [components](docs/architecture/Component_Diagrams.md), [sequences](docs/architecture/Sequence_Diagrams.md), [Phase 2 review notes](docs/architecture/Phase_2_Review_Notes.md) and [backend](backend/docs/)
+- **UX:** [animation specification](docs/ux/Animation_Specification.md) and [UX docs](docs/ux/)
+- **Operations:** [local development](docs/development/LOCAL_DEVELOPMENT.md) and [Render deployment](docs/deployment/Render.md)
 
 ---
 
-## Guiding Architectural Principles
+## Guiding Principles
 
 - Provider abstraction
 - Explicit domain boundaries
@@ -579,51 +256,13 @@ The repository contains living technical and product documentation covering:
 - Domain-driven state management
 - Event-based historical replay
 - Semantic visualization
-- Explicit React-to-renderer data flow
-- Rendering concerns isolated from API retrieval
+- Rendering isolated from API retrieval
 - Accessibility as a system concern rather than a final polish step
 
----
-
-## Development Standards
-
-Completed features should include, where applicable:
-
-- Types
-- Tests
-- Documentation
-- Error handling
-- Accessibility validation
-- Observability
-- Updated diagrams
-- Explicit data ownership
-- Clear application/rendering boundaries
-
-Changes should be validated incrementally and should not silently introduce
-new architectural responsibilities into existing layers.
-
----
-
-## Releases
-
-### v0.2.0 — Radio Weather Globe
-
-Phase 2 release establishing the interactive globe, visualization layers,
-observation filtering, live observation rendering, browser testing, and globe
-architecture.
-
-### v0.1.0 — Foundation & Data Platform
-
-Phase 1 release establishing the backend architecture, ingestion system,
-normalized radio observations, persistence, APIs, and development
-infrastructure.
+Contributions follow the [coding standards](coding_standards.md).
 
 ---
 
 ## License
 
 License selection is pending.
-
----
-
-*Observe. Explain. Predict. Replay. Explore.*
