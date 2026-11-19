@@ -33,14 +33,18 @@ def test_topics_must_not_be_empty(topics: list[str]) -> None:
         Settings(radio_atlas_database_url=DB, psk_reporter_mqtt_topics=topics)
 
 
-@pytest.mark.parametrize("days", [0, MIN_SPOT_RETENTION_DAYS, 30])
+@pytest.mark.parametrize("days", [0, MIN_SPOT_RETENTION_DAYS, 3, 30])
 def test_retention_accepts_disabled_or_safe_windows(days: int) -> None:
     settings = Settings(radio_atlas_database_url=DB, radio_atlas_spot_retention_days=days)
 
     assert settings.radio_atlas_spot_retention_days == days
 
 
-@pytest.mark.parametrize("days", [-1, 1, MIN_SPOT_RETENTION_DAYS - 1])
-def test_retention_rejects_windows_overlapping_aggregation(days: int) -> None:
+@pytest.mark.parametrize("days", [-1, -7])
+def test_retention_rejects_negative_windows(days: int) -> None:
     with pytest.raises(ValidationError):
         Settings(radio_atlas_database_url=DB, radio_atlas_spot_retention_days=days)
+
+
+def test_retention_minimum_is_one_day() -> None:
+    assert MIN_SPOT_RETENTION_DAYS == 1

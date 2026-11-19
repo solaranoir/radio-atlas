@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.analytics.aggregation.persistence import (
@@ -17,7 +18,13 @@ from app.infrastructure.database.models import (
     AnalyticsBandHourly,
     AnalyticsStationDaily,
     AnalyticsStationHourly,
+    SpotRetentionDay,
 )
+
+# Namespace for per-day advisory locks shared by the daily refresh and the
+# retention job ("RADA" as int4). The second key is the UTC day number.
+ROLLUP_DAY_LOCK_NAMESPACE = 0x52414441
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 def floor_to_hour(value: datetime) -> datetime:
@@ -35,6 +42,29 @@ def floor_to_day(value: datetime) -> datetime:
         second=0,
         microsecond=0,
     )
+
+
+def lock_rollup_day(session: Session, day_start: datetime) -> None:
+    """Serialize work on one UTC day's rollups until the transaction ends.
+
+    The daily refresh and the retention job both take this lock before
+    deciding whether a day may be (re)aggregated from raw spots. Retention
+    marks a day and only then deletes its spots, so a refresh holding the
+    lock either sees the day unmarked with all its spots, or sees the marker
+    and skips the day; it never aggregates a partly deleted day.
+    """
+
+    day_number = (floor_to_day(day_start) - _EPOCH).days
+    session.execute(
+        text("SELECT pg_advisory_xact_lock(CAST(:namespace AS integer), CAST(:day AS integer))"),
+        {"namespace": ROLLUP_DAY_LOCK_NAMESPACE, "day": day_number},
+    )
+
+
+def is_day_retained(session: Session, day_start: datetime) -> bool:
+    """True once retention has rolled up the day and may be deleting its spots."""
+
+    return session.get(SpotRetentionDay, floor_to_day(day_start)) is not None
 
 
 def run_hourly_aggregation(
@@ -165,11 +195,19 @@ def run_daily_incremental_refresh(
     now: datetime,
     lookback_days: int = 2,
 ) -> None:
-    current_day = floor_to_day(now)
-    start_time = current_day - timedelta(days=lookback_days)
+    """Rebuild the last ``lookback_days`` completed days from raw spots.
 
-    run_daily_backfill(
-        session,
-        start_time=start_time,
-        end_time=current_day,
-    )
+    Days already rolled up by the retention job are skipped: their raw spots
+    may be partly or fully deleted, and recomputing would overwrite the
+    retention rollups with lower counts. This is what lets the raw-spot
+    retention window be shorter than the refresh lookback.
+    """
+
+    current_day = floor_to_day(now)
+    day = current_day - timedelta(days=lookback_days)
+
+    while day < current_day:
+        lock_rollup_day(session, day)
+        if not is_day_retained(session, day):
+            run_daily_aggregation(session, bucket_start=day)
+        day += timedelta(days=1)

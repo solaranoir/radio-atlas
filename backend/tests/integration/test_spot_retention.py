@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.analytics.aggregation.jobs import run_daily_incremental_refresh
 from app.infrastructure.database.models import (
     AnalyticsBandDaily,
     AnalyticsBandHourly,
@@ -170,3 +171,18 @@ def test_retention_without_expired_spots_does_nothing(
 
     assert _spot_count(db_session) == 1
     assert result.cutoff == CUTOFF
+
+
+def test_daily_refresh_does_not_overwrite_days_rolled_up_by_retention(
+    db_session: Session, provider: Provider
+) -> None:
+    _add_spots(db_session, provider, [OLD_DAY_1 + timedelta(hours=h) for h in (1, 2, 3)])
+    run_spot_retention(db_session, now=NOW, retention_days=14)
+    assert _daily(db_session)[OLD_DAY_1] == 3
+
+    # A late spot for the retained day: re-aggregating from raw would drop the
+    # daily count from 3 to 1.
+    _add_spots(db_session, provider, [OLD_DAY_1 + timedelta(hours=4)])
+    run_daily_incremental_refresh(db_session, now=OLD_DAY_1 + timedelta(days=1, hours=1))
+
+    assert _daily(db_session)[OLD_DAY_1] == 3

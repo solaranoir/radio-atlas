@@ -4,8 +4,10 @@ from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session
 
 from app.analytics.aggregation.jobs import (
+    ROLLUP_DAY_LOCK_NAMESPACE,
     floor_to_day,
     floor_to_hour,
+    lock_rollup_day,
     run_daily_aggregation,
     run_daily_backfill,
     run_daily_incremental_refresh,
@@ -157,15 +159,47 @@ def test_hourly_incremental_refresh_reprocesses_completed_buckets() -> None:
 def test_daily_incremental_refresh_reprocesses_completed_buckets() -> None:
     session = MagicMock(spec=Session)
 
-    with patch("app.analytics.aggregation.jobs.run_daily_backfill") as run_backfill:
+    with (
+        patch("app.analytics.aggregation.jobs.lock_rollup_day") as lock,
+        patch("app.analytics.aggregation.jobs.is_day_retained", return_value=False),
+        patch("app.analytics.aggregation.jobs.run_daily_aggregation") as run_daily,
+    ):
         run_daily_incremental_refresh(
             session,
             now=datetime(2026, 9, 19, 14, 37, tzinfo=UTC),
             lookback_days=2,
         )
 
-    run_backfill.assert_called_once_with(
-        session,
-        start_time=datetime(2026, 9, 17, 0, 0, tzinfo=UTC),
-        end_time=datetime(2026, 9, 19, 0, 0, tzinfo=UTC),
-    )
+    days = [datetime(2026, 9, 17, tzinfo=UTC), datetime(2026, 9, 18, tzinfo=UTC)]
+    assert [c.args[1] for c in lock.call_args_list] == days
+    assert [c.kwargs["bucket_start"] for c in run_daily.call_args_list] == days
+
+
+def test_daily_incremental_refresh_skips_days_already_rolled_up_by_retention() -> None:
+    session = MagicMock(spec=Session)
+
+    with (
+        patch("app.analytics.aggregation.jobs.lock_rollup_day") as lock,
+        patch(
+            "app.analytics.aggregation.jobs.is_day_retained",
+            side_effect=[True, False],
+        ),
+        patch("app.analytics.aggregation.jobs.run_daily_aggregation") as run_daily,
+    ):
+        run_daily_incremental_refresh(
+            session,
+            now=datetime(2026, 9, 19, 14, 37, tzinfo=UTC),
+            lookback_days=2,
+        )
+
+    assert lock.call_count == 2
+    run_daily.assert_called_once_with(session, bucket_start=datetime(2026, 9, 18, tzinfo=UTC))
+
+
+def test_lock_rollup_day_uses_the_utc_day_number() -> None:
+    session = MagicMock(spec=Session)
+
+    lock_rollup_day(session, datetime(1970, 1, 3, 15, 0, tzinfo=UTC))
+
+    params = session.execute.call_args.args[1]
+    assert params == {"namespace": ROLLUP_DAY_LOCK_NAMESPACE, "day": 2}
