@@ -98,5 +98,5 @@ databases:
     plan: 0.1c-256mb
     databaseName: radio_atlas
     user: radio_atlas
-    diskSizeGB: 30
+    diskSizeGB: 35
     ipAllowList: []
