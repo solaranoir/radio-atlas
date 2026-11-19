@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from app.analytics.aggregation.jobs import (
     ROLLUP_DAY_LOCK_NAMESPACE,
     floor_to_day,
-    lock_rollup_day,
     floor_to_hour,
+    lock_rollup_day,
     run_daily_aggregation,
     run_daily_backfill,
     run_daily_incremental_refresh,
