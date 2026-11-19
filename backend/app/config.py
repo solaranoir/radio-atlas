@@ -6,8 +6,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
-# Incremental aggregation re-covers the last 2 days; retention stays clear of it.
-MIN_SPOT_RETENTION_DAYS = 3
+# Retention keeps at least yesterday in full. The daily incremental refresh
+# skips days retention has already rolled up, so a shorter window is safe.
+MIN_SPOT_RETENTION_DAYS = 1
 
 
 class Settings(BaseSettings):
@@ -42,8 +43,8 @@ class Settings(BaseSettings):
     # PSK_REPORTER_MQTT_TOPICS='["pskr/filter/v2/+/FT8/#","pskr/filter/v2/+/FT4/#"]'
     psk_reporter_mqtt_topics: list[str] = ["pskr/filter/v2/20m/FT8/#"]
     # Raw spots older than this many days are rolled up and then deleted.
-    # 0 disables retention. Must leave at least MIN_SPOT_RETENTION_DAYS so the
-    # retention job never overlaps the incremental aggregation window.
+    # 0 disables retention; otherwise at least MIN_SPOT_RETENTION_DAYS. The job
+    # keeps N full UTC days plus the current day.
     radio_atlas_spot_retention_days: int = 14
 
     @field_validator("psk_reporter_mqtt_topics")

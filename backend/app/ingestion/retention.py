@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session
 
 from app.analytics.aggregation.jobs import (
     floor_to_day,
+    lock_rollup_day,
     run_daily_aggregation,
     run_hourly_backfill,
 )
@@ -78,8 +79,12 @@ def roll_up_day_once(session: Session, day_start: datetime) -> bool:
     is either fully rolled up and marked, or neither. Once marked, the day is
     never re-aggregated: its raw spots may already be partly deleted, and
     recomputing would overwrite the rollups with lower counts.
+
+    The day lock is shared with the daily incremental refresh, so the two
+    never aggregate the same day concurrently.
     """
 
+    lock_rollup_day(session, day_start)
     if session.get(SpotRetentionDay, day_start) is not None:
         return False
     day_end = day_start + timedelta(days=1)

@@ -20,7 +20,9 @@ The updated Blueprint runs ingestion and aggregation in a dedicated single worke
 
 ## Spot retention and MQTT topics
 
-The worker deletes raw spots older than `RADIO_ATLAS_SPOT_RETENTION_DAYS` (application default 14; render.yaml sets 3; 0 disables; minimum 3). Retention runs 5 minutes after the worker starts and then hourly. Each expired UTC day is processed oldest-first. The day's hourly and daily rollups are rebuilt from its raw spots and the day is recorded in `spot_retention_days` in one transaction, then its spots are deleted in 10,000-row committed batches. Rollups are kept indefinitely, so analytics, the timeline and anomaly detection keep their full history. Raw-spot replay covers only the retention window.
+The worker deletes raw spots older than `RADIO_ATLAS_SPOT_RETENTION_DAYS` (application default 14; render.yaml sets 1; 0 disables; minimum 1). Retention runs 5 minutes after the worker starts and then hourly. Each expired UTC day is processed oldest-first. The day's hourly and daily rollups are rebuilt from its raw spots and the day is recorded in `spot_retention_days` in one transaction, then its spots are deleted in 10,000-row committed batches. Rollups are kept indefinitely, so analytics, the timeline and anomaly detection keep their full history. Raw-spot replay covers only the retention window.
+
+The daily incremental refresh, which rebuilds the last two completed days from raw spots, skips days already recorded in `spot_retention_days`, so the retention window can be shorter than its lookback. Both jobs take a per-day advisory lock before deciding whether to aggregate a day, so the refresh never re-aggregates a day whose spots retention is deleting.
 
 Rebuilding a day before deleting it also repairs hours a failed aggregation run missed. The first run after enabling retention can take a long time on a large backlog: it runs in a background thread and resumes where it stopped after a restart. Deleted rows free space for reuse inside Postgres, so the disk stops growing but does not shrink.
 
@@ -32,7 +34,7 @@ If the disk fills, Render suspends the database. Suspend the worker, resume the 
 
 ## Known storage and history limitations
 
-The production settings of five bands, 3 retention days and a 30 GB disk follow a database suspension in November 2026. All-band ingestion filled the 15 GB disk before the 14-day window deleted anything. Raw spots were then cleared once, so raw replay starts when ingestion resumed.
+The production settings of five bands, 1 retention day and a 30 GB disk follow two database suspensions in November 2026. The second, on 2026-11-19, came from 3 retention days: raw spots reached 26 GB of a 29 GB database at about 6.5 GB per day. Raw spots were cleared again after rolling up every finished day. All-band ingestion filled the 15 GB disk before the 14-day window deleted anything. Raw spots were then cleared once, so raw replay starts when ingestion resumed.
 
 - **Only five bands are collected.** 40m, 80m, 30m, 60m, 160m and other bands are no longer ingested. Rollups, the timeline, statistics and anomaly baselines cover only the subscribed bands from that point, so all-band totals are not comparable across the change. The daily rollup for the UTC day ingestion resumed may undercount, because it is rebuilt from spots received after the clear.
 
