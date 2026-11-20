@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-from app.analytics.anomalies.evaluation.detectors import Detector, median_of
+from app.analytics.anomalies.evaluation.detectors import Detector
 from app.analytics.anomalies.evaluation.models import (
     EvaluationDataset,
     KnownEvent,
@@ -17,6 +17,7 @@ from app.analytics.anomalies.evaluation.models import (
     SeriesPoint,
 )
 from app.analytics.anomalies.evaluation.series import prepare_series
+from app.analytics.anomalies.robust import median_of
 
 # A count series whose typical training bucket has at most this many spots is
 # "sparse"; an SNR series present in less than this share of hours is sparse.

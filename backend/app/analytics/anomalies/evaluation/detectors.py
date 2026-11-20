@@ -15,10 +15,7 @@ from datetime import datetime, timedelta
 from typing import Protocol
 
 from app.analytics.anomalies.evaluation.models import ScoredPoint, SeriesPoint
-
-# Scales MAD to be a consistent estimator of the standard deviation for
-# normally distributed data (Iglewicz & Hoaglin modified Z-score).
-MAD_CONSISTENCY = 0.6745
+from app.analytics.anomalies.robust import MAD_CONSISTENCY, median_of, sorted_median
 
 
 class Detector(Protocol):
@@ -89,7 +86,7 @@ class ThresholdDetector:
         for point in series:
             score: float | None = None
             if point.value is not None and len(history) >= self.minimum_samples:
-                score = point.value - _sorted_median(history)
+                score = point.value - sorted_median(history)
             scored.append(_scored(point, score))
             if point.value is not None:
                 bisect.insort(history, point.value)
@@ -192,16 +189,3 @@ def _windowed_zscore(
             window.add(point.bucket_start, point.value)
 
     return scored
-
-
-def median_of(values: Sequence[float]) -> float:
-    """Median of a non-empty sequence (sorts a copy)."""
-
-    return _sorted_median(sorted(values))
-
-
-def _sorted_median(values: Sequence[float]) -> float:
-    middle = len(values) // 2
-    if len(values) % 2:
-        return values[middle]
-    return (values[middle - 1] + values[middle]) / 2.0

@@ -560,6 +560,9 @@ organization rather than introducing a new architectural vocabulary.
 
 ## Story 5.2: Implement baseline modeling
 
+Status: **implemented.** See `Anomaly_Baselines.md` for the cohorts, quality rules,
+versioning, bounded storage and how to run it.
+
 - Implement robust median/MAD primitives and degenerate/sparse
   fallbacks.
 
