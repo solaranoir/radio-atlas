@@ -9,6 +9,8 @@ from app.analytics.aggregation.jobs import (
     run_hourly_incremental_refresh,
 )
 from app.analytics.aggregation.scheduler import run_aggregation_schedules
+from app.analytics.anomalies.runtime import run_baseline_refresh
+from app.config import get_settings
 from app.infrastructure.database.session import create_session
 from app.logging.logger import get_logger
 
@@ -56,6 +58,9 @@ async def run_hourly_job() -> None:
 
 async def run_daily_job() -> None:
     await asyncio.to_thread(_run_refresh, _daily, job_name="daily")
+    # Baselines read the daily rollups just refreshed, so they run second.
+    if get_settings().radio_atlas_baselines_enabled:
+        await asyncio.to_thread(run_baseline_refresh)
 
 
 async def run_aggregation_runtime() -> None:

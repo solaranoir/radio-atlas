@@ -10,6 +10,7 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
+    SmallInteger,
     String,
     UniqueConstraint,
     text,
@@ -711,4 +712,56 @@ class SpotRetentionDay(Base):
         DateTime(timezone=True),
         nullable=False,
         server_default=text("now()"),
+    )
+
+
+class AnomalyBaseline(Base):
+    """Latest baseline snapshot per version, dimension, metric and seasonal slot.
+
+    Only the current snapshot is kept: each refresh replaces the version's
+    rows, so the table stays a few thousand band rows plus a capped number of
+    station rows. Historical baselines are recomputed from rollups when
+    needed, and anomaly events persist the evidence they were scored with.
+    """
+
+    __tablename__ = "anomaly_baselines"
+
+    id: Mapped[int] = mapped_column(
+        BigInteger,
+        Identity(always=True),
+        primary_key=True,
+    )
+    baseline_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    dimension_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    dimension_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    metric: Mapped[str] = mapped_column(String(64), nullable=False)
+    resolution: Mapped[str] = mapped_column(String(8), nullable=False)
+    slot: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    method: Mapped[str] = mapped_column(String(40), nullable=False)
+    quality: Mapped[str] = mapped_column(String(16), nullable=False)
+    sample_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    transform: Mapped[str] = mapped_column(String(16), nullable=False)
+    center: Mapped[float | None] = mapped_column(Double, nullable=True)
+    scale: Mapped[float | None] = mapped_column(Double, nullable=True)
+    mad: Mapped[float | None] = mapped_column(Double, nullable=True)
+    expected_value: Mapped[float | None] = mapped_column(Double, nullable=True)
+    cohort_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cohort_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "baseline_version",
+            "dimension_type",
+            "dimension_key",
+            "metric",
+            "resolution",
+            "slot",
+            name="uq_anomaly_baselines_snapshot",
+        ),
     )

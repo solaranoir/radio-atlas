@@ -10,9 +10,9 @@ from app.analytics.anomalies.evaluation.detectors import (
     ThresholdDetector,
     ZScoreDetector,
     default_detectors,
-    median_of,
 )
 from app.analytics.anomalies.evaluation.models import SeriesKey, SeriesPoint
+from app.analytics.anomalies.robust import median_of
 
 KEY = SeriesKey("20m", "FT8")
 START = datetime(2026, 6, 1, tzinfo=UTC)
